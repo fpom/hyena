@@ -1,0 +1,52 @@
+{
+  "nodes": [
+    {
+      "inputs": [
+        {
+          "node": 1
+        }
+      ],
+      "locations": [
+        {
+          "outputs": [
+            {
+              "target": 1
+            }
+          ]
+        },
+        {
+          "outputs": [
+            {
+              "target": 0
+            }
+          ]
+        }
+      ],
+      "current": 0
+    },
+    {
+      "inputs": [
+        {
+          "node": 0
+        }
+      ],
+      "locations": [
+        {
+          "outputs": [
+            {
+              "target": 1
+            }
+          ]
+        },
+        {
+          "outputs": [
+            {
+              "target": 0
+            }
+          ]
+        }
+      ],
+      "current": 0
+    }
+  ]
+}
