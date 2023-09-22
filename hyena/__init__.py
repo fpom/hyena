@@ -1,11 +1,11 @@
-import ast, logging
+import logging, json, re
 import importlib.util as imputil
 
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum as _StrEnum, EnumType
 from typing import Any, Self, get_origin, get_args, Annotated
-from inspect import isclass, getmembers, isfunction, getmodule
+from inspect import isclass, getmembers, isfunction, getmodule, getsourcelines
 from frozendict import frozendict
 
 ##
@@ -35,66 +35,6 @@ class array(list):
         raise TypeError("'array' object does not support length change")
     def __imul__(self, other):
         raise TypeError("'array' object does not support length change")
-
-##
-## load JSON with Python comments inside
-##
-
-_json_const = {"true": True, "false": False, "null": None}
-
-def json_loads(text):
-    "this is `ast.literal_eval` extended with handling `false`/`true`/`null`"
-    node = ast.parse(text.lstrip(" \t"), mode="eval")
-    if isinstance(node, ast.Expression):
-        node = node.body
-    def _raise_malformed_node(node):
-        msg = "malformed node or string"
-        if lno := getattr(node, "lineno", None):
-            msg += f" on line {lno}"
-        raise ValueError(msg + f": {node!r}")
-    def _convert_num(node):
-        if not isinstance(node, ast.Constant) or type(node.value) not in (int, float, complex):
-            _raise_malformed_node(node)
-        return node.value
-    def _convert_signed_num(node):
-        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
-            operand = _convert_num(node.operand)
-            if isinstance(node.op, ast.UAdd):
-                return + operand
-            else:
-                return - operand
-        return _convert_num(node)
-    def _convert(node):
-        if isinstance(node, ast.Constant):
-            return node.value
-        elif isinstance(node, ast.Tuple):
-            return tuple(map(_convert, node.elts))
-        elif isinstance(node, ast.List):
-            return array(map(_convert, node.elts))
-        elif isinstance(node, ast.Set):
-            return set(map(_convert, node.elts))
-        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and
-              node.func.id == 'set' and node.args == node.keywords == []):
-            return set()
-        elif isinstance(node, ast.Dict):
-            if len(node.keys) != len(node.values):
-                _raise_malformed_node(node)
-            return dict(zip(map(_convert, node.keys),
-                            map(_convert, node.values)))
-        elif isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)):
-            left = _convert_signed_num(node.left)
-            right = _convert_num(node.right)
-            if isinstance(left, (int, float)) and isinstance(right, complex):
-                if isinstance(node.op, ast.Add):
-                    return left + right
-                else:
-                    return left - right
-        elif isinstance(node, ast.Name):
-            if node.id not in _json_const:
-                _raise_malformed_node(node)
-            return _json_const[node.id]
-        return _convert_signed_num(node)
-    return _convert(node)
 
 ##
 ## structures' fields description
@@ -251,6 +191,8 @@ def tplfuse(ref, tpl):
 ## base class for data structures
 ##
 
+func_def = re.compile(r"\Adef\s+(\S+)\s*\(\s*\)\s*:\s*$", re.M)
+
 class State(frozendict):
     struct = None
     def __new__(cls, struct, *args, **kwargs):
@@ -268,11 +210,24 @@ class State(frozendict):
             if isfunction(val):
                 val.__globals__.update(env)
         return env
+    def _update_src(self, src, env=None):
+        if match := func_def.match(src):
+            func = match.group(1)
+            if env is None:
+                return src + f"\n{func}()\n"
+            else:
+                _env = {}
+                exec(src, _env)
+                env[func] = _env[func]
+                return f"{func}()"
+        else:
+            return src
     def eval(self, expr, env):
-        return eval(expr, self._update_env(env))
+        return eval(self._update_src(expr, env),
+                    self._update_env(env))
     def exec(self, stmt, env):
         env = self._update_env(env)
-        exec(stmt, env)
+        exec(self._update_src(stmt), env)
         return env[self.struct].state
 
 ##
@@ -290,12 +245,11 @@ class Struct:
         "load structure from JSON"
         try:
             try:
-                text = source.read()
+                data = json.load(source)
             except:
-                text = open(source).read()
+                data = json.load(open(source))
         except :
-            text = source
-        data = json_loads(text)
+            data = json.loads(source)
         if not isinstance(data, dict):
             raise ValueError(f"cannot load from {data}")
         return cls.from_dict(data, pydefs)
@@ -344,7 +298,10 @@ class Struct:
                 typ = tuple if ftype.const else array
                 return typ(cls._load_dict(d, ftype.base, pydefs) for d in data)
             elif ftype.func:
-                return data
+                if isfunction(data):
+                    return cls._funcsrc(data)
+                else:
+                    return data
             elif data is None and ftype.option:
                 return None
             else:
@@ -357,6 +314,16 @@ class Struct:
             elif isinstance(data, ftype):
                 return data
         raise TypeError(f"could not load {ftype} from {data!r}")
+    @classmethod
+    def _funcsrc(cls, func):
+        lines, indent = [], 0
+        for line in getsourcelines(func)[0]:
+            if not lines:
+                indent = len(line) - len(line.lstrip())
+                if not func_def.match(line.strip()):
+                    raise ValueError(f"expected 'def ...():' but got {line.strip()!r}")
+            lines.append(line[indent:].rstrip())
+        return "\n".join(lines)
     @property
     def state(self):
         state = {}

@@ -1,6 +1,6 @@
 import subprocess, inspect, secrets, io
 
-from . import Field, Struct as BaseStruct, EnumType, State, array
+from . import Field, Struct as BaseStruct, EnumType, State, array, func_def
 from colorama import Style as S, Fore as F
 
 def pygen_headers(out):
@@ -113,11 +113,15 @@ def pygen_methods(system, out):
                 out.write(inspect.getsource(v))
             else:
                 out.write(f"    {k} = {v!r}\n")
-        out.write(f"    def {funcname}():\n")
-        if functype.base is type(None):
-            out.write(f"        {funcsrc}\n")
+        if func_def.match(funcsrc):
+            for line in funcsrc.splitlines():
+                out.write(f"    {line}\n")
         else:
-            out.write(f"        return {functype.base.__name__}({funcsrc})\n")
+            out.write(f"    def {funcname}():\n")
+            if functype.base is type(None):
+                out.write(f"        {funcsrc}\n")
+            else:
+                out.write(f"        return {functype.base.__name__}({funcsrc})\n")
         if funcidx is None:
             out.write(f"    {argnames[-1]}.{funcname} = {funcname}\n")
         else:

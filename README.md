@@ -202,14 +202,34 @@ from hyena import template
 
 @template
 class Transition:
+    def guard():
+        return True
+    def cost():
+        idx = node.inputs[0].node
+        if node.current == system.nodes[idx].current:
+            return 0
+        else:
+            return 1
+    def update():
+        pass
+```
+
+First it imports decorator `template` from `hyena`.
+Then it defines a template for class `Transition` by just setting defaults for its fields `.guard`, `.cost` and `.update`.
+This means that every `Transition` instance to be created will be initialised this way unless otherwise specified.
+Note that we borrow the syntax for Python methods, but these are not methods; in particular they do not expect argument `self` and will be evaluated as a bare function.
+Since these functions are defined in the scope of `Transition`, they have access to global objects `node` and `system`.
+This template could as well be defined using strings instead of functions:
+
+```python
+from hyena import template
+
+@template
+class Transition:
     guard = "True"
     cost = "0 if node.current == system.nodes[node.inputs[0].node].current else 1"
     update = ""
 ```
-
-First it imports decorator `template` from `hyena`.
-Then it defines a template for class `Transition` by just setting defaults for its fields `.guard`, `.cost` and `.update` (note how expressions are encoded as strings).
-This means that every `Transition` instance to be created will be initialised this way unless otherwise specified.
 
 Then, the JSON file `examples/simple.json` defines the full system as a nest of objects or arrays corresponding to the nesting of Python objects or arrays. 
 In the code below, we add Python comments to the JSON source in order to make it clearer, but remember that JSON does not accept comments:
@@ -413,7 +433,7 @@ The simplest method to extend a HyENA model is to add fields to it, either throu
 More concretely, every name that is defined this way is considered as a constant in the scope of the class where it is defined.
 This is achieved by inserting the corresponding declarations just before that of every local function, ie, at the beginning of function `make_cost` in the explanation given above.
 
-Consider for instance our previous example and assume that we want to simplify the expression of the guards to a simple call `sameloc()`.
+Consider for instance our previous example and assume that we want to simplify the expression of the guards by using an auxiliary function `sameloc()` to tell wether the two nodes are in the same currenty location.
 This requires a function `sameloc()` to be visible in the scope of the guards.
 We can achieve this by redefining the Python template as follows:
 
@@ -423,20 +443,20 @@ from hyena import template
 @template
 class Transition:
     guard = "True"
-    cost = "sameloc()"
     update = ""
-    def sameloc():
-        idx = node.inputs[0].node
-        if node.current == system.nodes[idx].current:
+    def cost():
+        if sameloc():
             return 0
         else:
             return 1
+    def sameloc():
+        idx = node.inputs[0].node
+        return node.current == system.nodes[idx].current
 ```
 
 This behaves exactly as before but the guard is written as a function instead of as a single expression, which makes it more readable.
-Note that we borrow the syntax for Python methods, but this is not a method; in particular it does not expect argument self (but could have other arguments) and will be evaluated as a bare function.
-Since this function is defined in the scope of `Transition`, it has access to global objects `node` and `system`.
-Note also that we don't call is as `transition.sameloc()` since it is not a method and class `Transition`.
+Note that we don't call is as `transition.sameloc()` since, just like `.cost`, it is not a method of class `Transition`.
+Note also that such auxiliary functions may have parameters just like any function (but not `self` as they are not methods).
 At any point of the objects hierarchy, we could include new names, storing values or functions, that will be made available in the scope of the class where they have been defined.
 Just like for `sameloc`, these added names are not fields of the class but constants defined in its scope.
 For instance adding `const = 42` to `Transition` above will make name `const` available in the scope of every `Transition` instance (and not `transition.const`).
@@ -482,14 +502,16 @@ from hyena import template
 @template
 class Transition:
     guard = "True"
-    cost = "node.count * sameloc()"
-    update = "node.count += 1"
-    def sameloc():
-        in0de = node.inputs[0].node
-        if node.current == system.nodes[in0de].current:
+    def cost():
+        if sameloc():
             return 0
         else:
-            return 1
+            return node.count
+    def sameloc():
+        idx = node.inputs[0].node
+        return node.current == system.nodes[idx].current
+    def update():
+        node.count += 1
 
 @template
 class Node:
@@ -504,7 +526,8 @@ This template defines the default values for:
  * `Node.current` (which will be overridden from JSON because so does `examples/simple.json`)
  * `Node.count` that is zero initially
 
-In general, `Transition.update` is expected to be a `;` separated sequence of assignments whose targets are all mutable fields of an object in the system.
+In general, `Transition.update` is expected to be a sequence of assignments whose targets are all mutable fields of an object in the system.
+This sequence can be encoded in a string by separating assignments with `;`, or it can be expressed as a function as above.
 Upon firing, the sequence is automatically completed with `node.current = transition.target`.
 
 #### `Struct`, `Field` and enums

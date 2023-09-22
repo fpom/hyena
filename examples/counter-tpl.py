@@ -3,14 +3,16 @@ from hyena import template
 @template
 class Transition:
     guard = "True"
-    cost = "node.count * sameloc()"
-    update = "node.count += 1"
-    def sameloc():
-        in0de = node.inputs[0].node
-        if node.current == system.nodes[in0de].current:
+    def cost():
+        if sameloc():
             return 0
         else:
-            return 1
+            return node.count
+    def sameloc():
+        idx = node.inputs[0].node
+        return node.current == system.nodes[idx].current
+    def update():
+        node.count += 1
 
 @template
 class Node:

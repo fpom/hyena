@@ -13,7 +13,10 @@ class Transition(Struct):
             yield state.exec(self.update, env), path, cost
     def __post_init__(self):
         if self.update:
-            self.update += "; node.current = transition.target"
+            if func_def.match(self.update):
+                self.update += "\n    node.current = transition.target"
+            else:
+                self.update += "; node.current = transition.target"
         else:
             self.update = "node.current = transition.target"
 
