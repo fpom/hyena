@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hyena"
+version = "0.1"
+authors = [
+  { name = "Franck Pommereau", email = "franck.pommereau@univ-evry.fr" },
+]
+description = "Hybrid Extensible Networks of Automata"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "colorama",
+    "frozendict",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/fpom/hyena"
+"Bug Tracker" = "https://github.com/fpom/hyena/issues"

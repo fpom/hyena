@@ -553,7 +553,16 @@ It is likely that only `hyena.pygen` will implement these checks, direct simulat
 
 ## Installation
 
-There is currently no installation procedure, just copy `hyena` subdirectory in a place where Python is able to find it.
+Within the project directory cloned from the [`git` repository](https://github.com/fpom/hyena/), run:
+
+```shell
+sh> pip install .
+```
+
+This will install `hyena` and its dependencies:
+
+ * [`colorama`](https://github.com/tartley/colorama)
+ * [`frozendict`](https://github.com/Marco-Sulla/python-frozendict)
 
 ## Licence
 
