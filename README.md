@@ -1,6 +1,6 @@
-# Hybrid Extensible Networks of Automata
+# Hybrid and Extensible Networks of Automata
 
-`hyena` is a Python library to define and simulate (ie, execute) hybrid extensible networks of automata (HyENA).
+`hyena` is a Python library to define and simulate (ie, execute) hybrid and extensible networks of automata (HyENA).
 A HyENA consists of a collection of finite automata that execute on a network while sharing some data.
 HyENAs are:
 

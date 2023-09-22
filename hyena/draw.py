@@ -30,15 +30,17 @@ def class_dot(out, root, gvopt):
         elif issubclass(cls, ena.StrEnum):
             color = "azure"
             text[False].extend(f"{num}: {val}" for num, val in enumerate(v.name for v in cls))
+            del text[True]
         else:
             continue
         label = (f'<<FONT face="mono">'
                  f'<TABLE border="0" cellborder="1" cellspacing="0">'
-                 f'<TR><TD bgcolor="{color}"><B>{text["name"]}</B></TD></TR>'
-                 f'<TR><TD align="LEFT" balign="LEFT">{"<BR/>".join(text[True])}</TD></TR>'
-                 f'<TR><TD align="LEFT" balign="LEFT">{"<BR/>".join(text[False])}</TD></TR>'
-                 f'</TABLE>'
-                 f'</FONT>>')
+                 f'<TR><TD bgcolor="{color}"><B>{text["name"]}</B></TD></TR>')
+        if True in text:
+            label += f'<TR><TD align="LEFT" balign="LEFT">{"<BR/>".join(text[True])}</TD></TR>'
+        label += (f'<TR><TD align="LEFT" balign="LEFT">{"<BR/>".join(text[False])}</TD></TR>'
+                  f'</TABLE>'
+                  f'</FONT>>')
         out.write(f'  {classname} [label={label}] ;\n')
     for src, tgt in links:
         out.write(f' "{src}" -> "{tgt}" ;\n')
