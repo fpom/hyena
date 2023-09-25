@@ -25,7 +25,7 @@ class Transition:
 class Location:
     # declare here all constants and functions that will be in location.env
     # default fields values
-    outputs = []
+    transitions = []
 
 @template
 class Node:
@@ -37,7 +37,7 @@ class Node:
     locations = [
         Location(
             status = "ok",
-            outputs=[
+            transitions=[
                 Transition(
                     target=1,
                     guard="location.status != STATUS.down and any(isUp(i.node) and isMalware(i.node) for i in node.inputs)",

@@ -23,10 +23,10 @@ class Transition(Struct):
 
 @dataclass
 class Location(Struct):
-    outputs: Prime[Const[Array[Transition]]]
+    transitions: Prime[Const[Array[Transition]]]
     def succ(self, state, env, path):
-        for num, trans in enumerate(self.outputs):
-            yield from trans.succ(state, env|self.env, path + ("outputs", num))
+        for num, trans in enumerate(self.transitions):
+            yield from trans.succ(state, env|self.env, path + ("transitions", num))
 
 @dataclass
 class Input(Struct):

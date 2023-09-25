@@ -8,14 +8,14 @@
       ],
       "locations": [
         {
-          "outputs": [
+          "transitions": [
             {
               "target": 1
             }
           ]
         },
         {
-          "outputs": [
+          "transitions": [
             {
               "target": 0
             }
@@ -32,14 +32,14 @@
       ],
       "locations": [
         {
-          "outputs": [
+          "transitions": [
             {
               "target": 1
             }
           ]
         },
         {
-          "outputs": [
+          "transitions": [
             {
               "target": 0
             }

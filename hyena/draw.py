@@ -63,7 +63,7 @@ def object_dot(out, root, gvopt):
             if lnum == node.current:
                 attrs += 'style=filled fillcolor="#FFFFAA"'
             out.write(f"    loc_{nnum}_{lnum} [{attrs}]\n")
-            for trans in loc.outputs:
+            for trans in loc.transitions:
                 out.write(f"    loc_{nnum}_{lnum} -> loc_{nnum}_{trans.target}\n")
         out.write("  }\n")
     for nnum, node in enumerate(root.nodes):

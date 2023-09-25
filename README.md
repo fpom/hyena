@@ -131,10 +131,10 @@ where each node is depicted as a rectangle within which its automaton is drawn, 
 We focus on `Location.cost` expressions since they are the only expressions to require a real evaluation.
 Considering that our `System` instance is `system`, we have four cost expressions:
 
- * `system.nodes[0].locations[0].outputs[0].cost`
- * `system.nodes[0].locations[1].outputs[0].cost`
- * `system.nodes[1].locations[0].outputs[0].cost`
- * `system.nodes[1].locations[1].outputs[0].cost`
+ * `system.nodes[0].locations[0].transitions[0].cost`
+ * `system.nodes[0].locations[1].transitions[0].cost`
+ * `system.nodes[1].locations[0].transitions[0].cost`
+ * `system.nodes[1].locations[1].transitions[0].cost`
 
 Each of this expression can be evaluated in a context that corresponds exactly to the "path" (ie, the nesting of structures) that allows to access it from `system`.
 This is equivalent to defining four functions, one for each expression, as follows:
@@ -150,16 +150,16 @@ def make_cost(node, location, transition):
 
 make_cost(system.nodes[0],
           system.nodes[0].locations[0],
-          system.nodes[0].locations[0].outputs[0])
+          system.nodes[0].locations[0].transitions[0])
 make_cost(system.nodes[0],
           system.nodes[0].locations[1],
-          system.nodes[0].locations[1].outputs[0])
+          system.nodes[0].locations[1].transitions[0])
 make_cost(system.nodes[1],
           system.nodes[1].locations[0],
-          system.nodes[1].locations[0].outputs[0])
+          system.nodes[1].locations[0].transitions[0])
 make_cost(system.nodes[1],
           system.nodes[1].locations[1],
-          system.nodes[1].locations[1].outputs[0])
+          system.nodes[1].locations[1].transitions[0])
 ```
 
 In this code, the function `cost` for each transition is defined within a closure that corresponds to its context, then it is assigned to the transition.
@@ -245,8 +245,8 @@ In the code below, we add Python comments to the JSON source in order to make it
       ],
       "locations": [ # system.nodes[0].locations
         { # system.nodes[0].locations[0]
-          "outputs": [ # system.nodes[0].locations[0].outputs
-            { # system.nodes[0].locations[0].outputs[0]
+          "transitions": [ # system.nodes[0].locations[0].transitions
+            { # system.nodes[0].locations[0].transitions[0]
               # only field .target is provided
               "target": 1
               # the rest will come for Python template
@@ -254,15 +254,15 @@ In the code below, we add Python comments to the JSON source in order to make it
           ]
         },
         { # system.nodes[0].locations[1]
-          "outputs": [{"target": 0}]
+          "transitions": [{"target": 0}]
         }
       ],
       "current": 0  # this could have been defined in Python template
     },
     { # system.nodes[1]
       "inputs": [{"node": 0}],
-      "locations": [{"outputs": [{"target": 1}]},
-                    {"outputs": [{"target": 0}]}],
+      "locations": [{"transitions": [{"target": 1}]},
+                    {"transitions": [{"target": 0}]}],
       "current": 0
     }
   ]
@@ -340,10 +340,10 @@ In [4]: succ = list(system.succ())
 In [5]: succ
 Out[5]: 
 [(system[nodes=(node[current=1], node[current=0])],
-  ('nodes', 0, 'locations', 0, 'outputs', 0),
+  ('nodes', 0, 'locations', 0, 'transitions', 0),
   0),
  (system[nodes=(node[current=0], node[current=1])],
-  ('nodes', 1, 'locations', 0, 'outputs', 0),
+  ('nodes', 1, 'locations', 0, 'transitions', 0),
   0)]
 ```
 
@@ -363,10 +363,10 @@ In [7]: system.state = s
 In [8]: list(system.succ())
 Out[8]: 
 [(system[nodes=(node[current=0], node[current=0])],
-  ('nodes', 0, 'locations', 1, 'outputs', 0),
+  ('nodes', 0, 'locations', 1, 'transitions', 0),
   1),
  (system[nodes=(node[current=1], node[current=1])],
-  ('nodes', 1, 'locations', 0, 'outputs', 0),
+  ('nodes', 1, 'locations', 0, 'transitions', 0),
   1)]
 ```
 
@@ -378,10 +378,10 @@ In [9]: s, p, c = succ[1]
 In [10]: list(system.succ(s))
 Out[10]: 
 [(system[nodes=(node[current=0], node[current=0])],
-  ('nodes', 0, 'locations', 1, 'outputs', 0),
+  ('nodes', 0, 'locations', 1, 'transitions', 0),
   1),
  (system[nodes=(node[current=1], node[current=1])],
-  ('nodes', 1, 'locations', 0, 'outputs', 0),
+  ('nodes', 1, 'locations', 0, 'transitions', 0),
   1)]
 ```
 
@@ -415,10 +415,10 @@ Out[3]: system[nodes=(node[current=0], node[current=0])]
 In [4]: list(sim.succ())
 Out[4]: 
 [(system[nodes=(node[current=0], node[current=1])],
-  ('nodes', 0, 'locations', 0, 'outputs', 0),
+  ('nodes', 0, 'locations', 0, 'transitions', 0),
   0),
  (system[nodes=(node[current=0], node[current=0])],
-  ('nodes', 1, 'locations', 0, 'outputs', 0),
+  ('nodes', 1, 'locations', 0, 'transitions', 0),
   0)]
 ```
 

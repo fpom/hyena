@@ -237,13 +237,13 @@ class Simulator:
         if state is None:
             state = old
         for nnum, node in enumerate(system.nodes):
-            for tnum, trans in enumerate(node.locations[node.current].outputs):
+            for tnum, trans in enumerate(node.locations[node.current].transitions):
                 self.set_state(state)
                 if trans.guard():
                     cost = trans.cost()
                     trans.update()
                     yield (self.get_state(),
-                           ("nodes", nnum, "locations", node.current, "outputs", tnum),
+                           ("nodes", nnum, "locations", node.current, "transitions", tnum),
                            cost)
         self.set_state(old)
     def _print_step(self):
