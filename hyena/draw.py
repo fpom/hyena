@@ -1,4 +1,4 @@
-import subprocess, importlib
+import subprocess, importlib, enum
 from inspect import isclass
 from pathlib import Path
 from . import ena
@@ -21,7 +21,7 @@ def class_dot(out, root, gvopt):
                 ftype = Field(field.type)
                 text[ftype.prime].append(f"{'-' if ftype.const else '+'} {name}: "
                                          + f"{ftype}"[6 if ftype.const else 0:])
-                if issubclass(ftype.base, ena.Struct) or isinstance(ftype.base, ena.EnumType):
+                if issubclass(ftype.base, ena.Struct) or isinstance(ftype.base, enum.EnumType):
                     succ = ftype.base.__name__
                     links.add((classname, succ))
                     if succ not in seen:
