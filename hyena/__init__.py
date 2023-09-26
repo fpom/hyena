@@ -12,6 +12,19 @@ from frozendict import frozendict
 
 
 #
+# logging
+#
+
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+f = logging.Formatter("[%(name)s] %(levelname)s: %(message)s")
+h = logging.StreamHandler()
+h.setFormatter(f)
+log.addHandler(h)
+
+
+#
 # auxiliary stuff
 #
 
@@ -329,7 +342,7 @@ class Struct:
                 text = f"missing {cls.__name__}.{name} in {data}"
                 if len(text) > 80:
                     text = text[:77] + "..."
-                logging.warn(text)
+                log.warn(text)
         struct = cls(**fields)
         struct._env = {}
         if pydefs and (tpl := getattr(pydefs, cls.__name__, None)) is not None:
