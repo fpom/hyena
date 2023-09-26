@@ -330,10 +330,16 @@ class Struct:
             spec.loader.exec_module(pydefs)
         if (tpl := getattr(pydefs, cls.__name__, None)) is not None:
             data = tplfuse(data, tpl().__tpl_todict__())
+        return cls._load_fields(data, pydefs)
+
+    @classmethod
+    def _load_fields(cls, data, pydefs):
         fields = {}
         for name, field in cls.__dataclass_fields__.items():
             ftype = Field(field.type, cls)
-            if name in data:
+            if ftype.macro:
+                fields[name] = ftype.macro
+            elif name in data:
                 fields[name] = cls._load_dict(data[name], ftype, pydefs)
             elif ftype.prime:
                 raise ValueError(f"missing {cls.__name__}.{name} in {data}")
@@ -344,7 +350,6 @@ class Struct:
                     text = text[:77] + "..."
                 log.warn(text)
         struct = cls(**fields)
-        struct._env = {}
         if pydefs and (tpl := getattr(pydefs, cls.__name__, None)) is not None:
             for key, val in getmembers(tpl):
                 if not key.startswith("_") and key not in cls.__dataclass_fields__:
@@ -393,6 +398,26 @@ class Struct:
                                      f" but got {line.strip()!r}")
             lines.append(line[indent:].rstrip())
         return "\n".join(lines)
+
+    def _eval_macros(self, state=None, env=None):
+        if state is None or env is None:
+            state, env = self.state, {}
+        env |= self.env
+        for fname, field in self.__dataclass_fields__.items():
+            ftype = Field(field.type)
+            value = getattr(self, fname)
+            if issubclass(ftype.base, Struct):
+                if isinstance(value, tuple):
+                    for val in value:
+                        if val is not None:
+                            val._eval_macros(state, env)
+                elif value is not None:
+                    value._eval_macros(state, env)
+            elif ftype.macro:
+                setattr(self, fname, state.eval(value, env))
+
+    def __post_init__(self):
+        self._env = {}
 
     @property
     def state(self):

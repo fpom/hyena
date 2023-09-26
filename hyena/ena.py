@@ -15,6 +15,7 @@ class Transition(Struct):
             yield state.exec(self.update, env), path, cost
 
     def __post_init__(self):
+        super().__post_init__()
         if self.update:
             if func_def.match(self.update):
                 self.update += "\n    node.current = transition.target"
@@ -54,6 +55,10 @@ class Node(Struct):
 @dataclass
 class System(Struct):
     nodes: Prime[Const[Array[Node]]]
+
+    def __post_init__(self):
+        super().__post_init__()
+        self._eval_macros()
 
     def succ(self, state=None):
         if state is None:
