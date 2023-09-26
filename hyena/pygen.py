@@ -1,7 +1,11 @@
-import subprocess, inspect, secrets, io
+import subprocess
+import inspect
+import secrets
+import io
 
 from . import Field, Struct as BaseStruct, EnumType, State, array, func_def
 from colorama import Style as S, Fore as F
+
 
 def pygen_headers(out):
     out.write("import secrets, io, readline\n"
@@ -11,9 +15,11 @@ def pygen_headers(out):
     out.write("##\n## auxiliary stuff\n##\n\n")
     out.write(inspect.getsource(array) + "\n")
 
+
 def pygen_enum(cls, out):
     values = [str(v) for v in cls]
     out.write(f"{cls.__name__} = StrEnum('{cls.__name__}', {values!r})\n\n")
+
 
 def pygen_class(cls, out):
     state = []
@@ -27,7 +33,8 @@ def pygen_class(cls, out):
             state.append(name)
     out.write(f"class {cls.__name__}:\n"
               f"    __state__ = {tuple(state)}\n")
-    out.write(f"    def __init__(self, {', '.join(cls.__dataclass_fields__)}):\n"
+    out.write(f"    def __init__(self,"
+              f"{', '.join(cls.__dataclass_fields__)}):\n"
               f"        self.__fields__ = {{}}\n")
     for name, field in cls.__dataclass_fields__.items():
         ftype = Field(field.type, cls)
@@ -36,9 +43,11 @@ def pygen_class(cls, out):
         elif ftype.array:
             orval = " or []" if ftype.option or not ftype.prime else ""
             if ftype.const:
-                out.write(f"        self.__fields__[{name!r}] = tuple({name}{orval})\n")
+                out.write(f"        self.__fields__[{name!r}]"
+                          f" = tuple({name}{orval})\n")
             else:
-                out.write(f"        self.__fields__[{name!r}] = array({name}{orval})\n")
+                out.write(f"        self.__fields__[{name!r}]"
+                          f" = array({name}{orval})\n")
         else:
             out.write(f"        self.__fields__[{name!r}] = {name}\n")
     for name, field in cls.__dataclass_fields__.items():
@@ -54,6 +63,7 @@ def pygen_class(cls, out):
                   f"    def {name}(self, value):\n"
                   f"        self.__fields__[{name!r}] = value\n")
     out.write("\n")
+
 
 def pygen_defs(sys_or_cls, out, done=None):
     if isinstance(sys_or_cls, BaseStruct):
@@ -76,6 +86,7 @@ def pygen_defs(sys_or_cls, out, done=None):
         elif isinstance(base, EnumType) and base.__name__ not in done:
             pygen_enum(base, out)
 
+
 def _search_funcs(obj, path):
     for fname, field in obj.__dataclass_fields__.items():
         ftype = Field(field.type)
@@ -90,9 +101,11 @@ def _search_funcs(obj, path):
             if ftype.array:
                 for idx, sub in enumerate(value):
                     if sub is not None:
-                        yield from _search_funcs(sub, path + [(fname, idx, ftype)])
+                        yield from _search_funcs(sub,
+                                                 path + [(fname, idx, ftype)])
             else:
                 yield from _search_funcs(value, path + [(fname, None, ftype)])
+
 
 def pygen_methods(system, out):
     for *path, (funcname, funcidx, functype, funcsrc) in _search_funcs(system, []):
@@ -121,13 +134,16 @@ def pygen_methods(system, out):
             if functype.base is type(None):
                 out.write(f"        {funcsrc}\n")
             else:
-                out.write(f"        return {functype.base.__name__}({funcsrc})\n")
+                out.write(f"        return {functype.base.__name__}"
+                          f"({funcsrc})\n")
         if funcidx is None:
             out.write(f"    {argnames[-1]}.{funcname} = {funcname}\n")
         else:
-            out.write(f"    {argnames[-1]}.{funcname}[{funcidx}] = {funcname}\n")
+            out.write(f"    {argnames[-1]}.{funcname}[{funcidx}]"
+                      f" = {funcname}\n")
         out.write(f"_make({', '.join(argsvals[1:])})\n\n")
     out.write("del _make\n")
+
 
 def pygen_system(system, out):
     code = f"system = {system!r}"
@@ -135,8 +151,9 @@ def pygen_system(system, out):
                                       encoding="utf-8").rstrip())
     out.write("\n\n")
 
-class tree (object) :
-    def __init__ (self, label, state={}) :
+
+class tree (object):
+    def __init__(self, label, state={}):
         self.label = label
         self.children = []
         for key, val in state.items():
@@ -144,30 +161,37 @@ class tree (object) :
                 self.children.append(tree(key, val))
             elif (isinstance(val, tuple)
                   and isinstance(val[0], State)):
-                self.children.extend(tree(f"{F.BLUE}{key}{F.GREEN}[{n}]{F.RESET}", v)
+                self.children.extend(tree(f"{F.BLUE}{key}"
+                                          f"{F.GREEN}[{n}]{F.RESET}", v)
                                      for n, v in enumerate(val))
             elif isinstance(val, tuple):
-                self.children.append(tree(f"{F.BLUE}{key}:{F.RESET} {list(val)}"))
+                self.children.append(tree(f"{F.BLUE}{key}:{F.RESET}"
+                                          f" {list(val)}"))
             else:
-                self.children.append(tree(f"{F.BLUE}{key}:{F.RESET} {val}"))
-    def print (self, out, prefix=None, last=True) :
-        if prefix is None :
+                self.children.append(tree(f"{F.BLUE}{key}:{F.RESET}"
+                                          f" {val}"))
+
+    def print(self, out, prefix=None, last=True):
+        if prefix is None:
             out.write(f"{self.label}\n")
-        elif last :
+        elif last:
             out.write(f" {prefix}{F.WHITE}└─{F.RESET} {self.label}\n")
-        else :
+        else:
             out.write(f" {prefix}{F.WHITE}├─{F.RESET} {self.label}\n")
-        for child in self.children :
-            if prefix is None :
+        for child in self.children:
+            if prefix is None:
                 child.print(out, "", child is self.children[-1])
-            elif last :
+            elif last:
                 child.print(out, prefix + "   ", child is self.children[-1])
-            else :
-                child.print(out, prefix + f"{F.WHITE}│{F.RESET}  ", child is self.children[-1])
-    def __str__ (self) :
+            else:
+                child.print(out, prefix + f"{F.WHITE}│{F.RESET}  ",
+                            child is self.children[-1])
+
+    def __str__(self):
         out = io.StringIO()
         self.print(out)
         return out.getvalue().rstrip()
+
 
 def diff(old_state, new_state):
     ret = {}
@@ -186,11 +210,14 @@ def diff(old_state, new_state):
             ret[key] = new
     return State(old_state.struct, ret)
 
+
 class Simulator:
     def __init__(self):
         self.initial = self.get_state()
+
     def get_state(self):
         return State(system, self._get_state(system))
+
     def _get_state(self, obj):
         fields = {}
         for key in obj.__state__:
@@ -210,8 +237,10 @@ class Simulator:
             if st is not None:
                 fields[key] = st
         return fields or None
+
     def set_state(self, state):
         self._set_state(state, system)
+
     def _set_state(self, state, obj):
         for key in obj.__state__:
             if key not in state:
@@ -226,12 +255,15 @@ class Simulator:
                 self._set_state(new, old)
             else:
                 setattr(obj, key, new)
+
     @property
     def state(self):
         return self.get_state()
+
     @state.setter
     def state(self, state):
         self.set_state(state)
+
     def succ(self, state=None):
         old = self.get_state()
         if state is None:
@@ -243,17 +275,22 @@ class Simulator:
                     cost = trans.cost()
                     trans.update()
                     yield (self.get_state(),
-                           ("nodes", nnum, "locations", node.current, "transitions", tnum),
+                           ("nodes", nnum, "locations", node.current,
+                            "transitions", tnum),
                            cost)
         self.set_state(old)
+
     def _print_step(self):
         if not self.trace:
             return
         state, trans, cost = self.trace[-1]
         if trans is not None:
-            path = ".".join(f"{f}[{i}]" for f, i in zip(trans[::2], trans[1::2]))
-            print(f"{F.RED}fired system.{path} {S.DIM}(+${cost} => ${self.cost}){S.RESET_ALL}")
+            path = ".".join(f"{f}[{i}]" for f, i in zip(trans[0::2],
+                                                        trans[1::2]))
+            print(f"{F.RED}fired system.{path} {S.DIM}(+${cost}"
+                  f" => ${self.cost}){S.RESET_ALL}")
         print(tree(f"{F.RED}state #{len(self.trace)-1}{S.RESET_ALL}", state))
+
     def run(self, ask=True, count=None, start=None):
         state = start or self.initial
         self.trace = [(state, None, 0)]
@@ -281,15 +318,19 @@ class Simulator:
             self._print_step()
             if count is not None:
                 count -= 1
+
     def ask(self, succs):
         for num, (state, trans, cost) in enumerate(succs):
             small = diff(self.trace[-1][0], state)
-            path = ".".join(f"{f}[{i}]" for f, i in zip(trans[::2], trans[1::2]))
+            path = ".".join(f"{f}[{i}]" for f, i in zip(trans[0::2],
+                                                        trans[1::2]))
             if small:
-                print(tree(f"{F.YELLOW}[{num}] system.{path} {S.DIM}+${cost}{S.RESET_ALL}"
+                print(tree(f"{F.YELLOW}[{num}] system.{path}"
+                           f" {S.DIM}+${cost}{S.RESET_ALL}"
                            f" {S.DIM}(diff){S.RESET_ALL}", small))
             else:
-                print(f"{F.YELLOW}[{num}] system.{path} {S.DIM}+${cost}{S.RESET_ALL}"
+                print(f"{F.YELLOW}[{num}] system.{path}"
+                      f" {S.DIM}+${cost}{S.RESET_ALL}"
                       f" (same state)")
         while True:
             default = "r"
@@ -299,14 +340,15 @@ class Simulator:
             elif len(succs) == 1:
                 prompt = f"0{S.DIM}|b(ack)|q(quit){S.RESET_ALL}"
             elif len(succs) == 2:
-                prompt = f"{S.DIM}0|1|b(ack)|q(quit)|{S.RESET_ALL+S.DIM}r(andom){S.RESET_ALL}"
+                prompt = (f"{S.DIM}0|1|b(ack)|q(quit)|"
+                          f"{S.RESET_ALL+S.DIM}r(andom){S.RESET_ALL}")
             else:
                 prompt = (f"{S.DIM}0|...|{len(succs)-1}|b(ack)|q(quit)|"
                           f"{S.RESET_ALL+S.DIM}r(andom){S.RESET_ALL}")
             prompt = f"{S.DIM}[{S.RESET_ALL}{prompt}{S.DIM}]{S.RESET_ALL} "
             try:
                 resp = input(prompt).strip().lower() or default
-            except:
+            except Exception:
                 resp = "quit"
             if resp[0] == "r":
                 self.trace.append(secrets.choice(succs))
@@ -324,12 +366,13 @@ class Simulator:
                     self.trace.append(succs[int(resp)])
                     self.cost += self.trace[-1][2]
                     return True
-                except:
+                except Exception:
                     pass
+
 
 def pygen_ui(out):
     for line in inspect.getsourcelines(State)[0]:
-        if "#CUT#" in line:
+        if "# CUT #" in line:
             break
         out.write(line)
     out.write("\n")
@@ -340,6 +383,7 @@ def pygen_ui(out):
               "if __name__ == '__main__':\n"
               "    sim = Simulator()\n"
               "    sim.run()\n")
+
 
 def pygen(system, out):
     pygen_headers(out)
@@ -352,15 +396,17 @@ def pygen(system, out):
     out.write("\n##\n## user interface\n##\n\n")
     pygen_ui(out)
 
+
 if __name__ == "__main__":
-    import argparse, importlib
+    import argparse
+    import importlib
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--out", type=argparse.FileType("w"),
                         default="-", metavar="PATH",
                         help="output path")
     parser.add_argument("struct", metavar="CLASS", type=str,
                         help="class to load")
-    parser.add_argument("spec", nargs=2, metavar="SPEC", 
+    parser.add_argument("spec", nargs=2, metavar="SPEC",
                         help="paths for a Python/JSON system")
     args = parser.parse_args()
     *modname, classname = args.struct.split(".")
@@ -368,11 +414,12 @@ if __name__ == "__main__":
     try:
         ena = importlib.import_module(modname)
         cls = getattr(ena, classname)
-    except:
+    except Exception:
         parser.exit(2, f"could not import '{modname}.{classname}'\n")
-    spec = {p.rsplit(".", 1)[-1].lower(): p for p in args.spec} 
+    spec = {p.rsplit(".", 1)[-1].lower(): p for p in args.spec}
     try:
         system = cls.from_json(open(spec["json"]), spec["py"])
     except KeyError as err:
-        parser.exit(2, f"no '.{err.args[0]}' file in {args.spec[0]!r}, {args.spec[1]!r}\n")
+        parser.exit(2, f"no '.{err.args[0]}' file in"
+                    f" {args.spec[0]!r}, {args.spec[1]!r}\n")
     pygen(system, args.out)

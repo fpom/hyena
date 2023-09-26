@@ -1,4 +1,6 @@
-import logging, json, re
+import logging
+import json
+import re
 import importlib.util as imputil
 
 from copy import deepcopy
@@ -8,37 +10,58 @@ from typing import Any, Self, get_origin, get_args, Annotated
 from inspect import isclass, getmembers, isfunction, getmodule, getsourcelines
 from frozendict import frozendict
 
-##
-## auxiliary stuff
-##
+
+#
+# auxiliary stuff
+#
+
 
 class array(list):
     "fixed-length lists"
-    def append(self, *l, **k):
-        raise TypeError("'array' object does not support length change")
-    def extend(self, *l, **k):
-        raise TypeError("'array' object does not support length change")
-    def clear(self, *l, **k):
-        raise TypeError("'array' object does not support length change")
-    def insert(self, *l, **k):
-        raise TypeError("'array' object does not support length change")
-    def remove(self, *l, **k):
-        raise TypeError("'array' object does not support length change")
-    def __delitem__(self, item):
-        raise TypeError("'array' object does not support item deletion")
+    def append(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def extend(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def clear(self):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def insert(self, *_):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def remove(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def __delitem__(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support item deletion")
+
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             if len(self[index]) != len(list(value)):
-                raise TypeError("'array' object does not support length change")
+                raise TypeError(f"'{self.__class__.__name__}'"
+                                f" object does not support length change")
         super().__setitem__(index, value)
-    def __iadd__(self, other):
-        raise TypeError("'array' object does not support length change")
-    def __imul__(self, other):
-        raise TypeError("'array' object does not support length change")
 
-##
-## structures' fields description
-##
+    def __iadd__(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+    def __imul__(self, _):
+        raise TypeError(f"'{self.__class__.__name__}'"
+                        f" object does not support length change")
+
+
+#
+# structures' fields description
+#
+
 
 class Field:
     def __class_getitem__(cls, arg):
@@ -51,23 +74,26 @@ class Field:
             annot |= a
         return Annotated[base, annot]
     annot = {
-        "within": None,  # field is .base constrained within .within
-        "array": False,  # field is an array of .base
-        "index": None,   # field is the index of an array .index
-        "func": False,   # field is a function returning .base
-        "macro": None,   # field is a macro evaluated at compile time
-        "prime": False,  # field is semantically required
-        "const": False,  # field is not mutable
-        "option": False, # field is optional
-        "unique": None   # field valeu is unique within given scope
+        "within": None,   # field is .base constrained within .within
+        "array": False,   # field is an array of .base
+        "index": None,    # field is the index of an array .index
+        "func": False,    # field is a function returning .base
+        "macro": None,    # field is a macro evaluated at compile time
+        "prime": False,   # field is semantically required
+        "const": False,   # field is not mutable
+        "option": False,  # field is optional
+        "unique": None    # field valeu is unique within given scope
     }
+
     def __init__(self, hint, parent=None):
         self.base, annot = get_args(hint)
         self.annot = self.annot | annot
         if parent is not None and issubclass(self.base, Struct):
             self.base = getattr(getmodule(parent), self.base.__name__)
+
     def __getattr__(self, name):
         return self.annot[name]
+
     def __str__(self):
         if self.within:
             text = f"#{self.within}"
@@ -95,9 +121,11 @@ class Field:
             text = f"{text}!{self.unique}"
         return text
 
+
 class Index:
     def __class_getitem__(cls, arg):
         return Field[int, {"within": arg}]
+
 
 class Array:
     def __class_getitem__(cls, args):
@@ -107,42 +135,52 @@ class Array:
             typ, idx = args, None
         return Field[typ, {"array": True, "index": idx}]
 
+
 class Expr:
     def __class_getitem__(cls, arg):
         return Field[arg, {"func": True}]
 
+
 Stmt = Expr[None]
+
 
 class Prime:
     def __class_getitem__(cls, arg):
         return Field[arg, {"prime": True}]
 
+
 class Const:
     def __class_getitem__(cls, arg):
         return Field[arg, {"const": True}]
+
 
 class Macro:
     def __class_getitem__(cls, arg):
         typ, expr = arg
         return Field[typ, {"macro": expr, "const": True}]
 
+
 class Option:
     def __class_getitem__(cls, arg):
         return Field[arg, {"option": True}]
+
 
 class Unique:
     def __class_getitem__(cls, arg):
         typ, scope = arg
         return Field[typ, {"unique": scope}]
 
-##
-## decorator for Python templating
-##
+
+#
+# decorator for Python templating
+#
+
 
 def template(cls):
     def __init__(self, **args):
         self.__tpl_fields__ = self.__tpl_fields__.copy()
         self.__tpl_fields__.update(args)
+
     def __tpl_todict__(self):
         fields = {}
         for key, val in self.__tpl_fields__.items():
@@ -155,17 +193,19 @@ def template(cls):
             else:
                 fields[key] = deepcopy(val)
         return fields
+
     cls.__init__ = __init__
     cls.__tpl_todict__ = __tpl_todict__
     cls.__tpl_fields__ = {k: v for k, v in cls.__dict__.items()
                           if not k.startswith("_")}
     return cls
 
+
 def tplfuse(ref, tpl):
     if isinstance(ref, dict):
         assert isinstance(tpl, dict)
         new = {}
-        for key in set(ref)|set(tpl):
+        for key in set(ref) | set(tpl):
             if key in ref and key in tpl:
                 new[key] = tplfuse(ref[key], tpl[key])
             elif key in ref:
@@ -187,29 +227,36 @@ def tplfuse(ref, tpl):
     else:
         return ref
 
-##
-## base class for data structures
-##
+
+#
+# base class for data structures
+#
+
 
 func_def = re.compile(r"\Adef\s+(\S+)\s*\(\s*\)\s*:\s*$", re.M)
 
+
 class State(frozendict):
     struct = None
+
     def __new__(cls, struct, *args, **kwargs):
         self = frozendict.__new__(cls, *args, **kwargs)
         self.__init__(*args, **kwargs)
         self.__dict__["struct"] = struct.__class__.__name__.lower()
         return self
+
     def __repr__(self):
         content = ", ".join(f"{k}={v!r}" for k, v in self.items())
         return f"{self.struct}[{content}]"
-    #CUT# only the above code is included by pygen
+    # CUT # only the above code is included by pygen
+
     def _update_env(self, env):
         env = deepcopy(env)
         for val in env.values():
             if isfunction(val):
                 val.__globals__.update(env)
         return env
+
     def _update_src(self, src, env=None):
         if match := func_def.match(src):
             func = match.group(1)
@@ -222,21 +269,26 @@ class State(frozendict):
                 return f"{func}()"
         else:
             return src
+
     def eval(self, expr, env):
         return eval(self._update_src(expr, env),
                     self._update_env(env))
+
     def exec(self, stmt, env):
         env = self._update_env(env)
         exec(self._update_src(stmt), env)
         return env[self.struct].state
 
-##
-## base class for enums and structures
-##
+
+#
+# base class for enums and structures
+#
+
 
 class StrEnum(_StrEnum):
     def __repr__(self):
         return f"{self.__class__.__name__}.{self}"
+
 
 @dataclass
 class Struct:
@@ -246,13 +298,14 @@ class Struct:
         try:
             try:
                 data = json.load(source)
-            except:
+            except Exception:
                 data = json.load(open(source))
-        except :
+        except Exception:
             data = json.loads(source)
         if not isinstance(data, dict):
             raise ValueError(f"cannot load from {data}")
         return cls.from_dict(data, pydefs)
+
     @classmethod
     def from_dict(cls, data: dict[str, Any], pydefs=None) -> Self:
         "load structure from dict"
@@ -291,6 +344,7 @@ class Struct:
             if isinstance(ftype.base, EnumType):
                 struct._env[ftype.base.__name__] = ftype.base
         return struct
+
     @classmethod
     def _load_dict(cls, data, ftype, pydefs):
         if isinstance(ftype, Field):
@@ -314,6 +368,7 @@ class Struct:
             elif isinstance(data, ftype):
                 return data
         raise TypeError(f"could not load {ftype} from {data!r}")
+
     @classmethod
     def _funcsrc(cls, func):
         lines, indent = [], 0
@@ -321,17 +376,18 @@ class Struct:
             if not lines:
                 indent = len(line) - len(line.lstrip())
                 if not func_def.match(line.strip()):
-                    raise ValueError(f"expected 'def ...():' but got {line.strip()!r}")
+                    raise ValueError(f"expected 'def ...():'"
+                                     f" but got {line.strip()!r}")
             lines.append(line[indent:].rstrip())
         return "\n".join(lines)
+
     @property
     def state(self):
         state = {}
         for name, field in self.__dataclass_fields__.items():
             value = getattr(self, name)
             ftype = Field(field.type)
-            if (isinstance(value, Struct)
-                and (st := value.state) is not None):
+            if (isinstance(value, Struct) and (st := value.state) is not None):
                 state[name] = st
             elif isinstance(value, tuple):
                 if value and isinstance(value[0], Struct):
@@ -343,6 +399,7 @@ class Struct:
             elif value is not None and not ftype.const:
                 state[name] = value
         return State(self, state)
+
     @state.setter
     def state(self, new):
         if (me := self.__class__.__name__.lower()) != new.struct:
@@ -357,10 +414,12 @@ class Struct:
                 old[:] = val
             else:
                 setattr(self, key, val)
+
     @property
     def env(self):
         name = self.__class__.__name__.lower()
-        return self._env|{name: self}
+        return self._env | {name: self}
+
     def __getitem__(self, path):
         if not isinstance(path, tuple):
             path = (path,)

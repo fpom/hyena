@@ -1,14 +1,16 @@
 from hyena import template
 
+
 @template
 class Transition:
     # declare here all constants and functions that will be in transition.env
     # default guard for every transition is True
     guard = "True"
     # default cost for every transition is 0
-    cost= 0
+    cost = 0
     # default update for every transition is empty
     update = ""
+
     def isUp(src):
         "test whether source node src is not down"
         # such a declaration is currently not allowed because its type is
@@ -16,16 +18,19 @@ class Transition:
         # node cannot be redefined and will be syntactically substituted
         n = system.nodes[src]
         return n.locations[n.current].status != STATUS.down
+
     def isMalware(src):
         "test whether source not src is infected by a malware"
         n = system.nodes[src]
         return n.locations[n.current].status == STATUS.malware
+
 
 @template
 class Location:
     # declare here all constants and functions that will be in location.env
     # default fields values
     transitions = []
+
 
 @template
 class Node:
@@ -36,7 +41,7 @@ class Node:
     secrets = [False]
     locations = [
         Location(
-            status = "ok",
+            status="ok",
             transitions=[
                 Transition(
                     target=1,
@@ -47,9 +52,10 @@ class Node:
             ]
         ),
         Location(
-            status = "malware"
+            status="malware"
         )
     ]
+
 
 @template
 class System:
