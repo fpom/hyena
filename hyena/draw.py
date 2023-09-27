@@ -11,7 +11,7 @@ from . import Field
 def class_dot(out, root, gvopt):
     out.write("digraph {\n"
               "  node [shape=plaintext margin=0]\n"
-              f"  {gvopt['graph']}\n")
+              f"  {gvopt.get('graph', '')}\n")
     links = set()
     todo = [root]
     seen = {root.__name__} | {c.__name__ for c in root.__bases__}
@@ -60,12 +60,12 @@ def object_dot(out, root, gvopt):
     out.write("digraph {\n"
               "  ranksep=1;"
               "  compound=true\n"
-              f"  {gvopt['graph']}\n")
+              f"  {gvopt.get('graph', '')}\n")
     current = {}
     for nnum, node in enumerate(root.nodes):
         current[nnum] = node.current
         out.write(f"  subgraph cluster_{nnum} {{\n"
-                  f"    {gvopt['cluster']}\n"
+                  f"    {gvopt.get('cluster', '')}\n"
                   f'    label=<<FONT face="mono">node #{nnum}</FONT>>;\n')
         for lnum, loc in enumerate(node.locations):
             status = loc.status[0].upper() if hasattr(loc, "status") else lnum
@@ -87,9 +87,11 @@ def object_dot(out, root, gvopt):
 
 
 def draw(path, what=ena.System, **gvopt):
+    global ena
     path = Path(path)
     with path.with_suffix(".dot").open("w") as out:
         if isclass(what):
+            ena = importlib.import_module(what.__module__)
             class_dot(out, what, gvopt)
         else:
             object_dot(out, what, gvopt)

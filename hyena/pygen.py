@@ -8,11 +8,13 @@ from colorama import Style as S, Fore as F
 
 
 def pygen_headers(out):
-    out.write("import secrets, io, readline\n"
+    out.write("import secrets\n"
+              "import io\n"
+              "import readline\n"
               "from enum import StrEnum\n"
               "from frozendict import frozendict\n"
               "from colorama import Style as S, Fore as F\n\n")
-    out.write("##\n## auxiliary stuff\n##\n\n")
+    out.write("#\n# auxiliary stuff\n#\n\n")
     out.write(inspect.getsource(array) + "\n")
 
 
@@ -122,7 +124,9 @@ def pygen_methods(system, out):
             env |= obj._env
         out.write(f"def _make({', '.join(argnames)}):\n")
         for k, v in env.items():
-            if callable(v):
+            if isinstance(v, EnumType):
+                pass
+            elif callable(v):
                 out.write(inspect.getsource(v))
             else:
                 out.write(f"    {k} = {v!r}\n")
@@ -387,13 +391,13 @@ def pygen_ui(out):
 
 def pygen(system, out):
     pygen_headers(out)
-    out.write("##\n## classes and enums definitions\n##\n\n")
+    out.write("#\n# classes and enums definitions\n#\n\n")
     pygen_defs(system, out)
-    out.write("##\n## system instance\n##\n\n")
+    out.write("#\n# system instance\n#\n\n")
     pygen_system(system, out)
-    out.write("##\n## methods definitions with specific contexts\n##\n\n")
+    out.write("#\n# methods definitions with specific contexts\n#\n\n")
     pygen_methods(system, out)
-    out.write("\n##\n## user interface\n##\n\n")
+    out.write("\n#\n# user interface\n#\n\n")
     pygen_ui(out)
 
 
