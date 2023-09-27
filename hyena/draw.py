@@ -8,10 +8,11 @@ from . import ena
 from . import Field
 
 
-def class_dot(out, root, gvopt):
+def class_dot(out, root, graph=""):
     out.write("digraph {\n"
-              "  node [shape=plaintext margin=0]\n"
-              f"  {gvopt.get('graph', '')}\n")
+              "  node [shape=plaintext margin=0]\n")
+    if graph:
+        out.write(f"  {graph}\n")
     links = set()
     todo = [root]
     seen = {root.__name__} | {c.__name__ for c in root.__bases__}
@@ -56,26 +57,30 @@ def class_dot(out, root, gvopt):
     out.write("}\n")
 
 
-def object_dot(out, root, gvopt):
+def object_dot(out, root, graph="", cluster="", automata=False):
     out.write("digraph {\n"
               "  ranksep=1;"
-              "  compound=true\n"
-              f"  {gvopt.get('graph', '')}\n")
+              "  compound=true\n")
+    if graph:
+        out.write(f"  {graph}\n")
     current = {}
     for nnum, node in enumerate(root.nodes):
         current[nnum] = node.current
-        out.write(f"  subgraph cluster_{nnum} {{\n"
-                  f"    {gvopt.get('cluster', '')}\n"
-                  f'    label=<<FONT face="mono">node #{nnum}</FONT>>;\n')
+        out.write(f"  subgraph cluster_{nnum} {{\n")
+        if cluster:
+            out.write(f"    {cluster}\n")
+        out.write(f'    label=<<FONT face="mono">node #{nnum}</FONT>>;\n')
         for lnum, loc in enumerate(node.locations):
-            status = loc.status[0].upper() if hasattr(loc, "status") else lnum
-            attrs = f'shape=circle label=<<FONT face="mono">{status}</FONT>>'
-            if lnum == node.current:
-                attrs += 'style=filled fillcolor="#FFFFAA"'
-            out.write(f"    loc_{nnum}_{lnum} [{attrs}]\n")
-            for trans in loc.transitions:
-                out.write(f"    loc_{nnum}_{lnum}"
-                          f" -> loc_{nnum}_{trans.target}\n")
+            if automata or lnum == node.current:
+                status = loc.status[0].upper() if hasattr(loc, "status") else lnum
+                attrs = f'shape=circle label=<<FONT face="mono">{status}</FONT>>'
+                if lnum == node.current:
+                    attrs += 'style=filled fillcolor="#FFFFAA"'
+                out.write(f"    loc_{nnum}_{lnum} [{attrs}]\n")
+                if automata:
+                    for trans in loc.transitions:
+                        out.write(f"    loc_{nnum}_{lnum}"
+                                  f" -> loc_{nnum}_{trans.target}\n")
         out.write("  }\n")
     for nnum, node in enumerate(root.nodes):
         for pred in node.inputs:
@@ -86,15 +91,15 @@ def object_dot(out, root, gvopt):
     out.write("}\n")
 
 
-def draw(path, what=ena.System, **gvopt):
+def draw(path, what=ena.System, **opts):
     global ena
     path = Path(path)
     with path.with_suffix(".dot").open("w") as out:
         if isclass(what):
             ena = importlib.import_module(what.__module__)
-            class_dot(out, what, gvopt)
+            class_dot(out, what, **opts)
         else:
-            object_dot(out, what, gvopt)
+            object_dot(out, what, **opts)
     if path.suffix != ".dot":
         subprocess.run(["dot",
                         "-T", path.suffix.lstrip("."),
@@ -109,14 +114,16 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--out", type=str, default=None,
                         metavar="PATH",
                         help="output path")
-    parser.add_argument("-g", "--graph", type=str, default="",
+    parser.add_argument("-g", "--graph", type=str, default=None,
                         metavar="DOTOPT",
                         help=("provide GraphViz options"
                               " to be inserted at graph level"))
-    parser.add_argument("-c", "--cluster", type=str, default="",
+    parser.add_argument("-c", "--cluster", type=str, default=None,
                         metavar="DOTOPT",
                         help=("provide GraphViz options to be inserted"
                               " at clusters (subgraphs) level"))
+    parser.add_argument("-a", "--automata", default=False, action="store_true",
+                        help="draw automata inside system nodes")
     parser.add_argument("struct", type=str,
                         metavar="CLASS",
                         help="draw CLASS (or an instance if SPEC is given)")
@@ -145,4 +152,6 @@ if __name__ == "__main__":
     else:
         parser.print_usage()
         parser.exit(1, "expected two arguments for SPEC\n")
-    draw(args.out, what, graph=args.graph, cluster=args.cluster)
+    opts = {name: value for name in ["graph", "cluster", "automata"]
+            if (value := getattr(args, name))}
+    draw(args.out, what, **opts)
