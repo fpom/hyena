@@ -1,8 +1,7 @@
-from hyena import template
+from hyena import Template
 
 
-@template
-class Transition:
+class Transition(Template):
     # declare here all constants and functions that will be in transition.env
     # default guard for every transition is True
     guard = "True"
@@ -25,15 +24,13 @@ class Transition:
         return n.locations[n.current].status == STATUS.malware
 
 
-@template
-class Location:
+class Location(Template):
     # declare here all constants and functions that will be in location.env
     # default fields values
     transitions = []
 
 
-@template
-class Node:
+class Node(Template):
     # declare here all constants and functions that will be in node.env
     # default fields values
     current = 0
@@ -57,8 +54,7 @@ class Node:
     ]
 
 
-@template
-class System:
+class System(Template):
     # declare here all constants and functions that will be in system.env
     # default fields values
     nbSecrets = 1

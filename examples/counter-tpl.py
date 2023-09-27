@@ -1,8 +1,7 @@
-from hyena import template
+from hyena import Template
 
 
-@template
-class Transition:
+class Transition(Template):
     guard = "True"
 
     def cost():
@@ -19,7 +18,6 @@ class Transition:
         node.count += 1
 
 
-@template
-class Node:
+class Node(Template):
     current = 0
     count = 0

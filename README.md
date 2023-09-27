@@ -198,10 +198,9 @@ A system in `hyena` consists of three components:
 The Python file `examples/simple.py` to build our simple example above is as follows:
 
 ```python
-from hyena import template
+from hyena import Template
 
-@template
-class Transition:
+class Transition(Template):
     def guard():
         return True
     def cost():
@@ -214,18 +213,17 @@ class Transition:
         pass
 ```
 
-First it imports decorator `template` from `hyena`.
-Then it defines a template for class `Transition` by just setting defaults for its fields `.guard`, `.cost` and `.update`.
+First it imports base class `Template` from `hyena`.
+Then it defines a template for class `Transition` by sublassing `Template` and setting defaults for its fields `.guard`, `.cost` and `.update`.
 This means that every `Transition` instance to be created will be initialised this way unless otherwise specified.
 Note that we borrow the syntax for Python methods, but these are not methods; in particular they do not expect argument `self` and will be evaluated as a bare function.
 Since these functions are defined in the scope of `Transition`, they have access to global objects `node` and `system`.
 This template could as well be defined using strings instead of functions:
 
 ```python
-from hyena import template
+from hyena import Template
 
-@template
-class Transition:
+class Transition(Template):
     guard = "True"
     cost = "0 if node.current == system.nodes[node.inputs[0].node].current else 1"
     update = ""
@@ -438,10 +436,9 @@ This requires a function `sameloc()` to be visible in the scope of the guards.
 We can achieve this by redefining the Python template as follows:
 
 ```python
-from hyena import template
+from hyena import Template
 
-@template
-class Transition:
+class Transition(Template):
     guard = "True"
     update = ""
     def cost():
@@ -497,10 +494,9 @@ By redefining `System` this way, we ensure that the library is aware that the ri
 To instantiate this model, we can reuse `examples/simple.json` as its JSON file, and use `examples/counter-tpl.py` as its Python template:
 
 ```python
-from hyena import template
+from hyena import Template
 
-@template
-class Transition:
+class Transition(Template):
     guard = "True"
     def cost():
         if sameloc():
@@ -513,8 +509,7 @@ class Transition:
     def update():
         node.count += 1
 
-@template
-class Node:
+class Node(Template):
     current = 0
     count = 0
 ```

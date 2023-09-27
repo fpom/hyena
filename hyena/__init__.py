@@ -185,11 +185,17 @@ class Unique:
 
 
 #
-# decorator for Python templating
+# Python templating
 #
 
 
-def template(cls):
+class Template:
+    __tpl_fields__ = {}
+
+    def __init_subclass__(cls):
+        cls.__tpl_fields__ = {k: v for k, v in cls.__dict__.items()
+                              if not k.startswith("_")}
+
     def __init__(self, **args):
         self.__tpl_fields__ = self.__tpl_fields__.copy()
         self.__tpl_fields__.update(args)
@@ -206,12 +212,6 @@ def template(cls):
             else:
                 fields[key] = deepcopy(val)
         return fields
-
-    cls.__init__ = __init__
-    cls.__tpl_todict__ = __tpl_todict__
-    cls.__tpl_fields__ = {k: v for k, v in cls.__dict__.items()
-                          if not k.startswith("_")}
-    return cls
 
 
 def tplfuse(ref, tpl):

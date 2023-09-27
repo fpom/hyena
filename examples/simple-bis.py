@@ -1,8 +1,7 @@
-from hyena import template
+from hyena import Template
 
 
-@template
-class Transition:
+class Transition(Template):
     guard = "True"
     update = ""
 
