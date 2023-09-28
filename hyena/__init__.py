@@ -5,7 +5,7 @@ import importlib.util as imputil
 
 from copy import deepcopy
 from dataclasses import dataclass
-from enum import StrEnum as _StrEnum, EnumType
+from enum import StrEnum as _StrEnum
 from typing import Any, Self, get_origin, get_args, Annotated
 from inspect import isclass, getmembers, isfunction, getmodule
 from frozendict import frozendict
@@ -14,6 +14,7 @@ from frozendict import frozendict
 #
 # logging
 #
+
 
 def make_logger(name, level=logging.DEBUG):
     log = logging.getLogger(name)
@@ -25,6 +26,7 @@ def make_logger(name, level=logging.DEBUG):
     return log
 
 log = make_logger("hyena")
+
 
 #
 # auxiliary stuff
@@ -85,15 +87,6 @@ class array(list):
 
 
 class Field:
-    def __class_getitem__(cls, arg):
-        if isinstance(arg, tuple):
-            base, annot = arg
-        else:
-            base, annot = arg, {}
-        if get_origin(base) is Annotated:
-            base, a = get_args(base)
-            annot |= a
-        return Annotated[base, annot]
     annot = {
         "within": None,   # field is .base constrained within .within
         "array": False,   # field is an array of .base
@@ -111,6 +104,16 @@ class Field:
         self.annot = self.annot | annot
         if parent is not None and issubclass(self.base, Struct):
             self.base = getattr(getmodule(parent), self.base.__name__)
+
+    def __class_getitem__(cls, arg):
+        if isinstance(arg, tuple):
+            base, annot = arg
+        else:
+            base, annot = arg, {}
+        if get_origin(base) is Annotated:
+            base, a = get_args(base)
+            annot |= a
+        return Annotated[base, annot]
 
     def __getattr__(self, name):
         return self.annot[name]
@@ -197,20 +200,110 @@ class Unique:
 #
 
 class Dummy:
-    def __getattr__(self, name):
-        return self.__class__()
+    def __getattr__(self, _):
+        return self
 
-    def __getitem__(self, index):
-        return self.__class__()
+    def __getitem__(self, _):
+        return self
 
-    def __setattr__(self, name, value):
+    def __delitem__(self, _):
         pass
 
-    def __setitem__(self, index, value):
+    def __setattr__(self, _, __):
         pass
 
-    def __add__(self, other):
-        return self.__class__()
+    def __setitem__(self, _, __):
+        pass
+
+    def __contains__(self, _):
+        return self
+
+    def __add__(self, _):
+        return self
+
+    def __sub__(self, _):
+        return self
+
+    def __mul__(self, _):
+        return self
+
+    def __div__(self, _):
+        return self
+
+    def __truediv__(self, _):
+        return self
+
+    def __floordiv__(self, _):
+        return self
+
+    def __pow__(self, _):
+        return self
+
+    def __mod__(self, _):
+        return self
+
+    def __lshift__(self, _):
+        return self
+
+    def __rshift__(self, _):
+        return self
+
+    def __and__(self, _):
+        return self
+
+    def __or__(self, _):
+        return self
+
+    def __xor__(self, _):
+        return self
+
+    def __neg__(self):
+        return self
+
+    def __pos__(self):
+        return self
+
+    def __abs__(self):
+        return self
+
+    def __invert__(self):
+        return self
+
+    def __int__(self):
+        return self
+
+    def __float__(self):
+        return self
+
+    def __lt__(self, _):
+        return self
+
+    def __le__(self, _):
+        return self
+
+    def __eq__(self, _):
+        return self
+
+    def __ne__(self, _):
+        return self
+
+    def __gt__(self, _):
+        return self
+
+    def __ge__(self, _):
+        return self
+
+    def __bool__(self):
+        return self
+
+    def __call__(self, *_, **__):
+        return self
+
+    def __len__(self):
+        return self
+
+    def __iter__(self):
+        return self
 
 
 class Template:

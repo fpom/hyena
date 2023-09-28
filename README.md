@@ -513,6 +513,7 @@ The fields of a `Struct` subclass should be all declared without a default value
  * `Macro[base, expr]` defines a constant field whose value has type `base` and will be computed from `expr` when the `System` is instantiated (ie, at the initial state), for instance, considering we have added `Node.name` as above, we could add `Input.name: Macro[str, "system.nodes[input.node].name"]` thus the name of an input is the name of the node it corresponds to
 
 Not all these typing constraints are currently enforced at runtime, but future version of `hyena` will progressively do it.
+Not also that, from a Python perspective, these type hints are currently not recognised by type checkers and so they may raise concerns with respect to the usage of fields.
 
 ## Installation
 
