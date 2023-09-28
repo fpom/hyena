@@ -1,20 +1,23 @@
-from hyena import Template
+from hyena import Template, Dummy
+
+# to silent typecheckers
+system = node = Dummy()
 
 
 class Transition(Template):
     guard = "True"
 
-    def cost():
-        if sameloc():
+    def cost(self):
+        if self.sameloc():
             return 0
         else:
             return node.count
 
-    def sameloc():
+    def sameloc(self):
         idx = node.inputs[0].node
         return node.current == system.nodes[idx].current
 
-    def update():
+    def update(self):
         node.count += 1
 
 

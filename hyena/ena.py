@@ -1,6 +1,5 @@
 from . import *
 
-
 @dataclass
 class Transition(Struct):
     target: Prime[Const[Index["Node.locations"]]]
@@ -8,31 +7,19 @@ class Transition(Struct):
     cost: Prime[Const[Expr[int]]]
     update: Prime[Const[Stmt]]
 
-    def succ(self, state, env, path):
-        env = env | self.env
-        if state.eval(self.guard, env):
-            cost = state.eval(self.cost, env)
-            yield state.exec(self.update, env), path, cost
-
-    def __post_init__(self):
-        super().__post_init__()
-        if self.update:
-            if func_def.match(self.update):
-                self.update += "\n    node.current = transition.target"
-            else:
-                self.update += "; node.current = transition.target"
-        else:
-            self.update = "node.current = transition.target"
+    def succ(self, path):
+        if self.guard():
+            cost = self.cost()
+            yield self, path, cost
 
 
 @dataclass
 class Location(Struct):
     transitions: Prime[Const[Array[Transition]]]
 
-    def succ(self, state, env, path):
+    def succ(self, path):
         for num, trans in enumerate(self.transitions):
-            yield from trans.succ(state, env | self.env,
-                                  path + ("transitions", num))
+            yield from trans.succ(path + ("transitions", num))
 
 
 @dataclass
@@ -46,10 +33,9 @@ class Node(Struct):
     locations: Prime[Const[Array[Location]]]
     current: Prime[Index[".locations"]]
 
-    def succ(self, state, env, path):
+    def succ(self, path):
         loc = self.locations[self.current]
-        yield from loc.succ(state, env | self.env,
-                            path + ("locations", self.current))
+        yield from loc.succ(path + ("locations", self.current))
 
 
 @dataclass
@@ -58,10 +44,18 @@ class System(Struct):
 
     def __post_init__(self):
         super().__post_init__()
-        self._eval_macros()
+        self._bind_methods()
 
     def succ(self, state=None):
+        old = self.state
         if state is None:
-            state = self.state
+            state = old
+        else:
+            self.state = state
         for num, node in enumerate(self.nodes):
-            yield from node.succ(state, self.env, ("nodes", num))
+            for trans, path, cost in node.succ(("nodes", num)):
+                trans.update()
+                node.current = trans.target
+                yield self.state, path, cost
+                self.state = state
+        self.state = old

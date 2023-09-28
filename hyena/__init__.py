@@ -1,13 +1,13 @@
 import logging
 import json
-import re
+import types
 import importlib.util as imputil
 
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum as _StrEnum, EnumType
 from typing import Any, Self, get_origin, get_args, Annotated
-from inspect import isclass, getmembers, isfunction, getmodule, getsourcelines
+from inspect import isclass, getmembers, isfunction, getmodule
 from frozendict import frozendict
 
 
@@ -15,14 +15,16 @@ from frozendict import frozendict
 # logging
 #
 
+def make_logger(name, level=logging.DEBUG):
+    log = logging.getLogger(name)
+    log.setLevel(level)
+    fmt = logging.Formatter("[%(name)s] %(levelname)s: %(message)s")
+    han = logging.StreamHandler()
+    han.setFormatter(fmt)
+    log.addHandler(han)
+    return log
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-f = logging.Formatter("[%(name)s] %(levelname)s: %(message)s")
-h = logging.StreamHandler()
-h.setFormatter(f)
-log.addHandler(h)
-
+log = make_logger("hyena")
 
 #
 # auxiliary stuff
@@ -30,7 +32,10 @@ log.addHandler(h)
 
 
 class array(list):
-    "fixed-length lists"
+    "fixed-length lists storing values of a specific type"
+    def __init__(self, basetype, *l, **k):
+        super().__init__(basetype(v) for v in list(*l, **k))
+        self.__basetype__ = basetype
     def append(self, _):
         raise TypeError(f"'{self.__class__.__name__}'"
                         f" object does not support length change")
@@ -60,7 +65,10 @@ class array(list):
             if len(self[index]) != len(list(value)):
                 raise TypeError(f"'{self.__class__.__name__}'"
                                 f" object does not support length change")
-        super().__setitem__(index, value)
+        if isinstance(index, slice):
+            super().__setitem__(index, (self.__basetype__(v) for v in value))
+        else:
+            super().__setitem__(index, self.__basetype__(value))
 
     def __iadd__(self, _):
         raise TypeError(f"'{self.__class__.__name__}'"
@@ -188,6 +196,22 @@ class Unique:
 # Python templating
 #
 
+class Dummy:
+    def __getattr__(self, name):
+        return self.__class__()
+
+    def __getitem__(self, index):
+        return self.__class__()
+
+    def __setattr__(self, name, value):
+        pass
+
+    def __setitem__(self, index, value):
+        pass
+
+    def __add__(self, other):
+        return self.__class__()
+
 
 class Template:
     __tpl_fields__ = {}
@@ -242,11 +266,8 @@ def tplfuse(ref, tpl):
 
 
 #
-# base class for data structures
+# states and execution contexts
 #
-
-
-func_def = re.compile(r"\Adef\s+(\S+)\s*\(\s*\)\s*:\s*$", re.M)
 
 
 class State(frozendict):
@@ -261,37 +282,46 @@ class State(frozendict):
     def __repr__(self):
         content = ", ".join(f"{k}={v!r}" for k, v in self.items())
         return f"{self.struct}[{content}]"
-    # CUT # only the above code is included by pygen
 
-    def _update_env(self, env):
-        env = deepcopy(env)
-        for val in env.values():
-            if isfunction(val):
-                val.__globals__.update(env)
-        return env
 
-    def _update_src(self, src, env=None):
-        if match := func_def.match(src):
-            func = match.group(1)
-            if env is None:
-                return src + f"\n{func}()\n"
-            else:
-                _env = {}
-                exec(src, _env)
-                env[func] = _env[func]
-                return f"{func}()"
+class Method:
+    def __init__(self, name, source, ret):
+        self.func = self._load_func(name, source, ret)
+        self.context = None
+
+    def __repr__(self):
+        try:
+            name = self.func.__qualname__
+        except AttributeError:
+            name = self.func.__name__
+        if self.context is None:
+            return repr(f"<method {name}>")
         else:
-            return src
+            return repr(f"<bound method {name}>")
 
-    def eval(self, expr, env):
-        return eval(self._update_src(expr, env),
-                    self._update_env(env))
+    def bind(self, obj, context):
+        self.context = dict(context)
+        self.func = types.MethodType(self.func, obj)
 
-    def exec(self, stmt, env):
-        env = self._update_env(env)
-        exec(self._update_src(stmt), env)
-        return env[self.struct].state
+    def __call__(self, *largs, **kwargs):
+        self.func.__globals__.update(self.context)
+        return self.func(*largs, **kwargs)
 
+    def _load_func(self, name, data, ret):
+        if isinstance(data, str):
+            if ret is type(None):
+                src = (f"def {name}(self):\n"
+                       f"    {data or 'pass'}\n")
+            else:
+                src = (f"def {name}(self):\n"
+                       f"    return {ret.__name__}({data})\n")
+            env = {}
+            exec(src, env)
+            return env[name]
+        elif isfunction(data):
+            return data
+        else:
+            raise TypeError(f"expected str of function but got {data!r}")
 
 #
 # base class for enums and structures
@@ -305,6 +335,34 @@ class StrEnum(_StrEnum):
 
 @dataclass
 class Struct:
+    __pydefs__: Any
+    @classmethod
+    def _fields(cls):
+        for name, field in cls.__dataclass_fields__.items():
+            if name != "__pydefs__":
+                yield name, Field(field.type, cls)
+
+    def __post_init__(self):
+        self.__dict__["__extra__"] = {}
+        self.__dict__["__fields__"] = {n: t for n, t in self._fields()}
+
+    def __getattr__(self, name):
+        try:
+            return self.__dict__["__extra__"][name]
+        except KeyError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no"
+                                 f" attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if hasattr(self, "__fields__") and name != "state":
+            ftype = self.__fields__.get(name, None)
+            fname = f"{self.__class__.__name__}.{name}"
+            if ftype is None:
+                raise TypeError(f"cannot assign non-field {fname}")
+            elif ftype.const:
+                raise TypeError(f"cannot assign const field {fname}")
+        super().__setattr__(name, value)
+
     @classmethod
     def from_json(cls, source, pydefs=None) -> Self:
         "load structure from JSON"
@@ -330,54 +388,58 @@ class Struct:
             spec.loader.exec_module(pydefs)
         if (tpl := getattr(pydefs, cls.__name__, None)) is not None:
             data = tplfuse(data, tpl().__tpl_todict__())
-        return cls._load_fields(data, pydefs)
+        return cls._load(data, pydefs)
 
     @classmethod
-    def _load_fields(cls, data, pydefs):
+    def _load(cls, data, pydefs):
+        # build instance from available fields
         fields = {}
-        for name, field in cls.__dataclass_fields__.items():
-            ftype = Field(field.type, cls)
+        for name, ftype in cls._fields():
+            # load field
             if ftype.macro:
-                fields[name] = ftype.macro
+                fields[name] = Method(name, ftype.macro, ftype.base)
             elif name in data:
-                fields[name] = cls._load_dict(data[name], ftype, pydefs)
+                fields[name] = cls._load_dict(name, data[name], ftype, pydefs)
             elif ftype.prime:
                 raise ValueError(f"missing {cls.__name__}.{name} in {data}")
             else:
                 fields[name] = None
                 text = f"missing {cls.__name__}.{name} in {data}"
-                if len(text) > 80:
-                    text = text[:77] + "..."
+                if len(text) > 60:
+                    text = text[:60] + "..."
                 log.warn(text)
-        struct = cls(**fields)
+            # collect enums to be inserted in context
+        struct = cls(**fields, __pydefs__=pydefs)
+        # load extra fields from pydefs
         if pydefs and (tpl := getattr(pydefs, cls.__name__, None)) is not None:
             for key, val in getmembers(tpl):
                 if not key.startswith("_") and key not in cls.__dataclass_fields__:
-                    struct._env[key] = val
+                    struct.__extra__[key] = val
+        # load extra fields from data
         for key, val in data.items():
             if key not in cls.__dataclass_fields__:
-                struct._env[key] = val
-        for name, field in cls.__dataclass_fields__.items():
-            ftype = Field(field.type, cls)
-            if isinstance(ftype.base, EnumType):
-                struct._env[ftype.base.__name__] = ftype.base
+                struct.__extra__[key] = val
         return struct
 
     @classmethod
-    def _load_dict(cls, data, ftype, pydefs):
+    def _load_dict(cls, name, data, ftype, pydefs):
         if isinstance(ftype, Field):
             if ftype.array:
-                typ = tuple if ftype.const else array
-                return typ(cls._load_dict(d, ftype.base, pydefs) for d in data)
-            elif ftype.func:
-                if isfunction(data):
-                    return cls._funcsrc(data)
+                items = (cls._load_dict(f"{name}_{i}", d, ftype.base, pydefs)
+                         for i, d in enumerate(data))
+                if ftype.const:
+                    return tuple(items)
                 else:
-                    return data
+                    return array(ftype.base, items)
+            elif ftype.func:
+                if data is None:
+                    return None
+                else:
+                    return Method(name, data, ftype.base)
             elif data is None and ftype.option:
                 return None
             else:
-                return cls._load_dict(data, ftype.base, pydefs)
+                return cls._load_dict(name, data, ftype.base, pydefs)
         elif isclass(ftype):
             if issubclass(ftype, Struct):
                 return ftype.from_dict(data, pydefs)
@@ -387,44 +449,45 @@ class Struct:
                 return data
         raise TypeError(f"could not load {ftype} from {data!r}")
 
-    @classmethod
-    def _funcsrc(cls, func):
-        lines, indent = [], 0
-        for line in getsourcelines(func)[0]:
-            if not lines:
-                indent = len(line) - len(line.lstrip())
-                if not func_def.match(line.strip()):
-                    raise ValueError(f"expected 'def ...():'"
-                                     f" but got {line.strip()!r}")
-            lines.append(line[indent:].rstrip())
-        return "\n".join(lines)
-
-    def _eval_macros(self, state=None, env=None):
-        if state is None or env is None:
-            state, env = self.state, {}
-        env |= self.env
-        for fname, field in self.__dataclass_fields__.items():
-            ftype = Field(field.type)
+    def _bind_methods(self, env=None):
+        if env is None:
+            env = {}
+            if self.__pydefs__ is not None:
+                env.update((k, v) for k, v in getmembers(self.__pydefs__)
+                           if not k.startswith("_"))
+        env |= {self.__class__.__name__.lower(): self}
+        for fname, ftype in self._fields():
             value = getattr(self, fname)
             if issubclass(ftype.base, Struct):
                 if isinstance(value, tuple):
                     for val in value:
                         if val is not None:
-                            val._eval_macros(state, env)
+                            val._bind_methods(env)
                 elif value is not None:
-                    value._eval_macros(state, env)
-            elif ftype.macro:
-                setattr(self, fname, state.eval(value, env))
-
-    def __post_init__(self):
-        self._env = {}
+                    value._bind_methods(env)
+            elif ftype.func or ftype.macro:
+                if isinstance(value, tuple):
+                    for val in value:
+                        if val is not None:
+                            val.bind(self, env)
+                    if ftype.macro:
+                        new = tuple(None if val is None else val()
+                                    for val in value)
+                        self.__dict__["fname"] = new
+                elif value is not None:
+                    value.bind(self, env)
+                    if ftype.macro:
+                        self.__dict__[fname] = value()
+        for key, val in self.__extra__.items():
+            if isfunction(val):
+                meth = self.__extra__[key] = Method(val.__name__, val, None)
+                meth.bind(self, env)
 
     @property
     def state(self):
         state = {}
-        for name, field in self.__dataclass_fields__.items():
+        for name, ftype in self._fields():
             value = getattr(self, name)
-            ftype = Field(field.type)
             if (isinstance(value, Struct) and (st := value.state) is not None):
                 state[name] = st
             elif isinstance(value, tuple):
@@ -436,7 +499,7 @@ class Struct:
                 state[name] = tuple(value)
             elif value is not None and not ftype.const:
                 state[name] = value
-        return State(self, state)
+        return State(self, state) or None
 
     @state.setter
     def state(self, new):
@@ -452,11 +515,6 @@ class Struct:
                 old[:] = val
             else:
                 setattr(self, key, val)
-
-    @property
-    def env(self):
-        name = self.__class__.__name__.lower()
-        return self._env | {name: self}
 
     def __getitem__(self, path):
         if not isinstance(path, tuple):

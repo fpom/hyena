@@ -1,16 +1,19 @@
-from hyena import Template
+from hyena import Template, Dummy
+
+# silent type checkers
+system = node = Dummy()
 
 
 class Transition(Template):
-    def guard():
+    def guard(self):
         return True
 
-    def cost():
+    def cost(self):
         idx = node.inputs[0].node
         if node.current == system.nodes[idx].current:
             return 0
         else:
             return 1
 
-    def update():
+    def update(self):
         pass
