@@ -322,7 +322,11 @@ sh> python -m hyena.draw -a -g "newrank=true; rankdir=LR" -c "rank=same" hyena.e
 
 ### Simulation
 
-`hyena` allows to simulate a system, either directly from Python using an instance of class `System`, or through an interactive simulator that provides a basic user interface.
+`hyena` allows to simulate a system in several ways:
+
+ * directly from Python using an instance of class `System`
+ * through an interactive simulator that provides a basic user interface
+ * by computing the reachable states and possibly checking them
 
 #### Direct simulation from Python
 
@@ -403,6 +407,38 @@ This yields a shell that prompts for commands to explore a trace.
 Option `-c` allows to load the system from a class other that `hyena.ena.System`.
 Within the simulator, command `help` prints help about the available commands, and `help cmd` prints more details about a specific command.
 States are displayed as trees rooted at `system`, and successor states are displayed as just what will change in the state.
+
+#### Reachability analysis
+
+Reachability analyser can be started with, eg:
+
+```shell
+sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py
+```
+
+Invoked this way, it will just explore the state-space until all reachable states are computed.
+Like for `hyena.simul`, option `-c` allows to load the system from a class other that `hyena.ena.System`.
+Other options allow to control exploration:
+
+ * `-v` toggles printing each explored state
+ * `-l NUM` limits the state-space exploration to `NUM` states
+ * `-s PATH` saves the state-space to a JSON file after its exploration
+ * `-a EXPR` adds an assertion to be checked on every state, see below
+
+Option `-a` adds a property to be checked on every state just before its successors are computed.
+Using `-a` several times allow to check several properties.
+For instance, one could run:
+
+```shell
+sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py -a 'system.nodes[0].current == 0'
+>>> 3 states + 2 to explore
+assert failed: system.nodes[0].current == 0
+on state: system[nodes=(node[current=1], node[current=0])]
+```
+
+As shown above, assertions are Python Boolean expressions that check the values of some fields in a state.
+Note that assertions are checked against the whole system, including the constant fields.
+Note also that assertions may fail for two reasons: if they are not verified at a state, or if they raised an exception, in which case the error will be printed as well.
 
 ## Extending HyENAs
 
