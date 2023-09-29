@@ -393,7 +393,16 @@ Out[10]:
 
 #### Interactive simulation
 
-(Work in progress.)
+Interactive simulation can be started with, eg:
+
+```shell
+sh> python -m hyena.simul -j examples/simple.json -p examples/simple.py
+```
+
+This yields a shell that prompts for commands to explore a trace.
+Option `-c` allows to load the system from a class other that `hyena.ena.System`.
+Within the simulator, command `help` prints help about the available commands, and `help cmd` prints more details about a specific command.
+States are displayed as trees rooted at `system`, and successor states are displayed as just what will change in the state.
 
 ## Extending HyENAs
 
