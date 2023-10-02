@@ -1,5 +1,6 @@
 from . import *
 
+
 @dataclass
 class Transition(Struct):
     target: Prime[Const[Index["Node.locations"]]]

@@ -102,7 +102,8 @@ class Simulator:
             sig = inspect.signature(meth)
             argmax = len(sig.parameters) - 1
             argmin = len([n for n, p in sig.parameters.items()
-                          if n != "self" and p.default == inspect.Signature.empty])
+                          if n != "self"
+                          and p.default == inspect.Signature.empty])
             self._cmdargs[name] = (argmin, argmax)
 
     def _complete(self, text, state):
@@ -161,14 +162,14 @@ class Simulator:
 
     def _expand_cmd(self, prefix):
         candidates = [c for c in self._cmdhelp if c.startswith(prefix)]
-        if len(candidates) == 1 :
+        if len(candidates) == 1:
             return candidates[0]
         else:
             return prefix
 
-    def _read_cmd (self) :
+    def _read_cmd(self):
         prompt = f"{F.YELLOW}#{len(self.trace)}?{F.RESET} "
-        try :
+        try:
             line = input(prompt)
         except EOFError:
             print()
@@ -177,7 +178,7 @@ class Simulator:
         except KeyboardInterrupt:
             print()
             line = "pass"
-        if not line.strip() :
+        if not line.strip():
             if self.events:
                 line = "random"
             else:
@@ -304,7 +305,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--class", dest="cls", type=str, metavar="CLASS",
                         default="hyena.ena.System",
-                        help="System class to be loaded (default: `hyena.ena.System`)")
+                        help=("System class to be loaded"
+                              " (default: `hyena.ena.System`)"))
     parser.add_argument("-j", "--json", type=str, metavar="PATH",
                         help="JSON file to be loaded")
     parser.add_argument("-p", "--python", type=str, metavar="PATH",

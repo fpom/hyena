@@ -42,7 +42,7 @@ class Explorer:
             self.succ[state] = succ
             for s, *_ in succ:
                 if (s not in self.succ
-                        and (self.limit is None 
+                        and (self.limit is None
                              or len(self) < self.limit)):
                     self.todo.append(s)
                     self.succ[s] = None
@@ -80,7 +80,7 @@ class Explorer:
             } for state, succ in self.succ.items()
         ], out, indent=2)
 
-    def trace (self, state) :
+    def trace(self, state):
         init = [Event(self.init, None, 0)]
         if state == self.init:
             return init
@@ -98,14 +98,15 @@ class Explorer:
                         new_paths.append(new)
             old_paths = new_paths
         return []
- 
+
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--class", dest="cls", type=str, metavar="CLASS",
                         default="hyena.ena.System",
-                        help="System class to be loaded (default: `hyena.ena.System`)")
+                        help=("System class to be loaded"
+                              " (default: `hyena.ena.System`)"))
     parser.add_argument("-j", "--json", type=str, metavar="PATH",
                         help="JSON file to be loaded")
     parser.add_argument("-p", "--python", type=str, metavar="PATH",
@@ -123,7 +124,8 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--limit", default=None, type=int, metavar="NUM",
                         help="limit exploration to NUM states")
     parser.add_argument("-d", "--depth", default=False, action="store_true",
-                        help="perform depth-first exploration instead of the default breadth-first")
+                        help=("explore depth-first instead of"
+                              " the default breadth-first"))
     args = parser.parse_args()
     modname, classname = args.cls.rsplit(".", 1)
     try:
@@ -135,7 +137,10 @@ if __name__ == "__main__":
     system = cls.from_json(args.json, args.python)
     explorer = None
     try:
-        explorer = Explorer(system, depth=args.depth, limit=args.limit, props=args.props)
+        explorer = Explorer(system,
+                            depth=args.depth,
+                            limit=args.limit,
+                            props=args.props)
         for state, succs in explorer:
             if args.verbose:
                 print(state, f"{S.DIM}=> +{len(succs)}{S.RESET_ALL}")
@@ -161,7 +166,8 @@ if __name__ == "__main__":
                 if e.trans is not None:
                     cost += e.cost
                     print(f"{F.RED}>>>{F.RESET} system.{e.trans}"
-                          f" {S.DIM}{F.RED}(+${e.cost} => ${cost}){S.RESET_ALL}")
+                          f" {S.DIM}{F.RED}(+${e.cost}"
+                          f" => ${cost}){S.RESET_ALL}")
                 print(tree(f"{F.BLUE}#{n}:{F.RESET}", e.state))
         parser.exit(3, "\n".join(lines) + "\n")
     if not args.verbose:

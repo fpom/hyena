@@ -72,8 +72,10 @@ def object_dot(out, root, graph="", cluster="", automata=False):
         out.write(f'    label=<<FONT face="mono">node #{nnum}</FONT>>;\n')
         for lnum, loc in enumerate(node.locations):
             if automata or lnum == node.current:
-                status = loc.status[0].upper() if hasattr(loc, "status") else lnum
-                attrs = f'shape=circle label=<<FONT face="mono">{status}</FONT>>'
+                status = (loc.status[0].upper()
+                          if hasattr(loc, "status") else lnum)
+                attrs = (f'shape=circle label=<<FONT face="mono">'
+                         f'{status}</FONT>>')
                 if lnum == node.current:
                     attrs += 'style=filled fillcolor="#FFFFAA"'
                 out.write(f"    loc_{nnum}_{lnum} [{attrs}]\n")

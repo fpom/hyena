@@ -25,6 +25,7 @@ def make_logger(name, level=logging.DEBUG):
     log.addHandler(han)
     return log
 
+
 log = make_logger("hyena")
 
 
@@ -35,9 +36,10 @@ log = make_logger("hyena")
 
 class array(list):
     "fixed-length lists storing values of a specific type"
-    def __init__(self, basetype, *l, **k):
-        super().__init__(basetype(v) for v in list(*l, **k))
+    def __init__(self, basetype, *largs, **kargs):
+        super().__init__(basetype(v) for v in list(*largs, **kargs))
         self.__basetype__ = basetype
+
     def append(self, _):
         raise TypeError(f"'{self.__class__.__name__}'"
                         f" object does not support length change")
@@ -429,6 +431,7 @@ class StrEnum(_StrEnum):
 @dataclass
 class Struct:
     __pydefs__: Any
+
     @classmethod
     def _fields(cls):
         for name, field in cls.__dataclass_fields__.items():
@@ -506,7 +509,8 @@ class Struct:
         # load extra fields from pydefs
         if pydefs and (tpl := getattr(pydefs, cls.__name__, None)) is not None:
             for key, val in getmembers(tpl):
-                if not key.startswith("_") and key not in cls.__dataclass_fields__:
+                if (not key.startswith("_")
+                        and key not in cls.__dataclass_fields__):
                     struct.__extra__[key] = val
         # load extra fields from data
         for key, val in data.items():
