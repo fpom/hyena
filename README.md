@@ -410,6 +410,11 @@ States are displayed as trees rooted at `system`, and successor states are displ
 
 #### Reachability analysis
 
+Some models may reach finitely many states, for instance our simple model, because it has no variables other that the current location of its automata.
+In such a case, `hyena` allows to compute all these reachable states and to check assertions on them.
+However, if the set of reachable states is not finite, this computation will run until it crashes saturating the memory.
+In such situations, an option is available to bound exploration to a finite number of states.
+
 Reachability analyser can be started with, eg:
 
 ```shell
@@ -424,14 +429,27 @@ Other options allow to control exploration:
  * `-l NUM` limits the state-space exploration to `NUM` states
  * `-s PATH` saves the state-space to a JSON file after its exploration
  * `-a EXPR` adds an assertion to be checked on every state, see below
+ * `-t` when an assertion is violated, prints a trace to it from initial state
 
 Option `-a` adds a property to be checked on every state just before its successors are computed.
 Using `-a` several times allow to check several properties.
 For instance, one could run:
 
 ```shell
-sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py -a 'system.nodes[0].current == 0'
->>> 3 states + 2 to explore
+sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py -t -a 'system.nodes[0].current == 0'
+... 3 states + 2 to explore
+### trace ###
+#0:
+ ├─ nodes[0]
+ │  └─ current: 0
+ └─ nodes[1]
+    └─ current: 0
+>>> system.nodes[0].locations[0].transitions[0] (+$0 => $0)
+#1:
+ ├─ nodes[0]
+ │  └─ current: 1
+ └─ nodes[1]
+    └─ current: 0
 assert failed: system.nodes[0].current == 0
 on state: system[nodes=(node[current=1], node[current=0])]
 ```

@@ -4,6 +4,7 @@ import sys
 import json
 
 from colorama import Fore as F, Style as S
+from .simul import Event, Trans, tree
 
 
 class AssertFailed(Exception):
@@ -17,8 +18,9 @@ class AssertFailed(Exception):
 class Explorer:
     def __init__(self, system, depth=False, limit=None, props=[]):
         self.system = system
+        self.init = self.system.state
         self.succ = {}
-        self.todo = collections.deque([self.system.state])
+        self.todo = collections.deque([self.init])
         self.depth = depth
         self.limit = limit
         self.props = dict(self.compile(props))
@@ -50,7 +52,7 @@ class Explorer:
         return len(self.succ)
 
     def progress(self, newline=False):
-        sys.stdout.write(f"\r{F.YELLOW}>>>{F.RESET} {len(self)} state"
+        sys.stdout.write(f"\r{F.YELLOW}...{F.RESET} {len(self)} state"
                          f"{'s' if len(self) > 1 else ''}"
                          f" {S.DIM}+ {len(self.todo)} to explore"
                          f"{S.RESET_ALL}")
@@ -77,7 +79,26 @@ class Explorer:
                     } for s, t, c in succ]
             } for state, succ in self.succ.items()
         ], out, indent=2)
-        
+
+    def trace (self, state) :
+        init = [Event(self.init, None, 0)]
+        if state == self.init:
+            return init
+        old_paths = [init]
+        seen = {self.init}
+        while len(seen) < len(self.succ):
+            new_paths = []
+            for old in old_paths:
+                for s, t, c in self.succ[old[-1].state]:
+                    new = old + [Event(s, Trans(t), c)]
+                    if s == state:
+                        return new
+                    elif s not in seen:
+                        seen.add(s)
+                        new_paths.append(new)
+            old_paths = new_paths
+        return []
+ 
 
 if __name__ == "__main__":
     import argparse
@@ -94,6 +115,8 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--assert", default=[], metavar="EXPR",
                         action="append", dest="props",
                         help="property to check on state")
+    parser.add_argument("-t", "--trace", default=False, action="store_true",
+                        help="print a trace to a state found violating assert")
     parser.add_argument("-s", "--save", default=None, metavar="PATH",
                         type=argparse.FileType("w"),
                         help="save state-space as JSON to PATH")
@@ -122,7 +145,7 @@ if __name__ == "__main__":
     except AssertFailed as err:
         lines = []
         if not args.verbose and explorer is not None and len(explorer):
-            lines.append("")
+            print()
         if err.state is None:
             lines = [f"{F.RED}invalid assert:{F.RESET} {err.prop}"]
         else:
@@ -131,6 +154,15 @@ if __name__ == "__main__":
         if err.exc is not None:
             lines.append(f"{F.RED}raised {err.exc.__class__.__name__}:"
                          f"{F.RESET} {err.exc}")
+        if args.trace and explorer is not None and err.state is not None:
+            print(f"{F.RED}### trace ###{F.RESET}")
+            cost = 0
+            for n, e in enumerate(explorer.trace(err.state)):
+                if e.trans is not None:
+                    cost += e.cost
+                    print(f"{F.RED}>>>{F.RESET} system.{e.trans}"
+                          f" {S.DIM}{F.RED}(+${e.cost} => ${cost}){S.RESET_ALL}")
+                print(tree(f"{F.BLUE}#{n}:{F.RESET}", e.state))
         parser.exit(3, "\n".join(lines) + "\n")
     if not args.verbose:
         print()
