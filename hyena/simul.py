@@ -22,11 +22,14 @@ class tree (object):
         for key, val in state.items():
             if isinstance(val, State):
                 self.children.append(tree(key, val))
+            elif isinstance(val, tuple) and all(v is None for v in val):
+                pass
             elif (isinstance(val, tuple)
-                  and isinstance(val[0], State)):
+                  and any(isinstance(v, State) for v in val)):
                 self.children.extend(tree(f"{F.BLUE}{key}"
                                           f"{F.GREEN}[{n}]{F.RESET}", v)
-                                     for n, v in enumerate(val))
+                                     for n, v in enumerate(val)
+                                     if v is not None)
             elif isinstance(val, tuple):
                 self.children.append(tree(f"{F.BLUE}{key}:{F.RESET}"
                                           f" {list(val)}"))
@@ -67,7 +70,9 @@ def diff(old_state, new_state):
                 ret[key] = d
         elif (isinstance(old, tuple)
               and isinstance(old[0], State)):
-            if t := tuple(d for o, v in zip(old, new) if (d := diff(o, v))):
+            t = tuple(d if (d := diff(o, v)) else None
+                      for o, v in zip(old, new))
+            if any(x is not None for x in t):
                 ret[key] = t
         else:
             ret[key] = new

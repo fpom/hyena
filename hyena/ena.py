@@ -4,23 +4,12 @@ from . import *
 @dataclass
 class Transition(Struct):
     target: Prime[Const[Index["Node.locations"]]]
-    guard: Prime[Const[Expr[bool]]]
-    cost: Prime[Const[Expr[int]]]
-    update: Prime[Const[Stmt]]
-
-    def succ(self, path):
-        if self.guard():
-            cost = self.cost()
-            yield self, path, cost
+    action: Prime[Const[Action]]
 
 
 @dataclass
 class Location(Struct):
     transitions: Prime[Const[Array[Transition]]]
-
-    def succ(self, path):
-        for num, trans in enumerate(self.transitions):
-            yield from trans.succ(path + ("transitions", num))
 
 
 @dataclass
@@ -33,10 +22,6 @@ class Node(Struct):
     inputs: Const[Array[Input]]
     locations: Prime[Const[Array[Location]]]
     current: Prime[Index[".locations"]]
-
-    def succ(self, path):
-        loc = self.locations[self.current]
-        yield from loc.succ(path + ("locations", self.current))
 
 
 @dataclass
@@ -53,10 +38,16 @@ class System(Struct):
             state = old
         else:
             self.state = state
-        for num, node in enumerate(self.nodes):
-            for trans, path, cost in node.succ(("nodes", num)):
-                trans.update()
-                node.current = trans.target
-                yield self.state, path, cost
+        todo = [("nodes", n, "locations", node.current, "transitions", t)
+                for n, node in enumerate(self.nodes)
+                for t in range(len(node.locations[node.current].transitions))]
+        for path in todo:
+            trans = self[path]
+            try:
                 self.state = state
-        self.state = old
+                act = trans.action()
+                if act is not None:
+                    self[path[:2]].current = trans.target
+                    yield self.state, path, act
+            finally:
+                self.state = old

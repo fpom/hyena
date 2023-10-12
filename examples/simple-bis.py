@@ -5,14 +5,13 @@ system = node = Dummy()
 
 
 class Transition(Template):
-    guard = "True"
-    update = ""
+    cost = 42
 
-    def cost(self):
+    def action(self):
         if self.sameloc():
             return 0
         else:
-            return 1
+            return self.cost
 
     def sameloc(self):
         idx = node.inputs[0].node

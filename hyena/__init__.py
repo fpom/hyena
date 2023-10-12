@@ -167,7 +167,7 @@ class Expr:
         return Field[arg, {"func": True}]
 
 
-Stmt = Expr[None]
+Action = Expr[None]
 
 
 class Prime:
@@ -218,7 +218,7 @@ class Dummy:
         pass
 
     def __contains__(self, _):
-        return self
+        return True
 
     def __add__(self, _):
         return self
@@ -272,40 +272,40 @@ class Dummy:
         return self
 
     def __int__(self):
-        return self
+        return 0
 
     def __float__(self):
-        return self
+        return 0.0
 
     def __lt__(self, _):
-        return self
+        return True
 
     def __le__(self, _):
-        return self
+        return True
 
     def __eq__(self, _):
-        return self
+        return True
 
     def __ne__(self, _):
-        return self
+        return True
 
     def __gt__(self, _):
-        return self
+        return True
 
     def __ge__(self, _):
-        return self
+        return True
 
     def __bool__(self):
-        return self
+        return True
 
     def __call__(self, *_, **__):
         return self
 
     def __len__(self):
-        return self
+        return 0
 
     def __iter__(self):
-        return self
+        yield self
 
 
 class Template:

@@ -22,8 +22,7 @@ def class_dot(out, root, graph=""):
         text = {"name": classname, True: [], False: []}
         if issubclass(cls, ena.Struct):
             color = "lightyellow"
-            for name, field in cls.__dataclass_fields__.items():
-                ftype = Field(field.type)
+            for name, ftype in cls._fields():
                 text[ftype.prime].append(
                     f"{'-' if ftype.const else '+'} {name}: "
                     + f"{ftype}"[6 if ftype.const else 0:])
