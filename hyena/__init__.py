@@ -94,6 +94,7 @@ class Field:
         "array": False,   # field is an array of .base
         "index": None,    # field is the index of an array .index
         "func": False,    # field is a function returning .base
+        "action": False,  # field is an action
         "macro": None,    # field is a macro evaluated at compile time
         "prime": False,   # field is semantically required
         "const": False,   # field is not mutable
@@ -167,7 +168,7 @@ class Expr:
         return Field[arg, {"func": True}]
 
 
-Action = Expr[None]
+Action = Field[None, {"func": True, "action": True}]
 
 
 class Prime:
@@ -380,9 +381,10 @@ class State(frozendict):
 
 
 class Method:
-    def __init__(self, name, source, ret):
+    def __init__(self, name, source, ret, action=False):
         self.func = self._load_func(name, source, ret)
         self.context = None
+        self.action = action
 
     def __repr__(self):
         try:
@@ -400,7 +402,12 @@ class Method:
 
     def __call__(self, *largs, **kwargs):
         self.func.__globals__.update(self.context)
-        return self.func(*largs, **kwargs)
+        if self.action:
+            state = self.context["system"].state
+        ret = self.func(*largs, **kwargs)
+        if self.action and ret is None:
+            self.context["system"].state = state
+        return ret
 
     def _load_func(self, name, data, ret):
         if isinstance(data, str):
@@ -532,7 +539,7 @@ class Struct:
                 if data is None:
                     return None
                 else:
-                    return Method(name, data, ftype.base)
+                    return Method(name, data, ftype.base, ftype.action)
             elif data is None and ftype.option:
                 return None
             else:
