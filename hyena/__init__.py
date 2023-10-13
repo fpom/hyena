@@ -410,7 +410,8 @@ class Method:
         return ret
 
     def _load_func(self, name, data, ret):
-        if isinstance(data, str):
+        if isinstance(data, str) or (ret and isinstance(data, ret)):
+            data = repr(data)
             if ret is type(None):
                 src = (f"def {name}(self):\n"
                        f"    {data or 'pass'}\n")
@@ -529,6 +530,8 @@ class Struct:
     def _load_dict(cls, name, data, ftype, pydefs):
         if isinstance(ftype, Field):
             if ftype.array:
+                if ftype.option and data is None:
+                    return None
                 items = (cls._load_dict(f"{name}_{i}", d, ftype.base, pydefs)
                          for i, d in enumerate(data))
                 if ftype.const:
