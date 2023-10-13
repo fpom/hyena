@@ -635,3 +635,12 @@ class Struct:
             else:
                 raise ValueError("invalid object path {path!r}")
         return obj
+
+
+class Jump(Exception):
+    def __init__(self, *seq, **idx):
+        super().__init__()
+        jumps = idx | {i: s for i, s in enumerate(seq) if s is not None}
+        self.jumps = {int(k): int(v)
+                      for k, v in jumps.items()
+                      if v is not None}

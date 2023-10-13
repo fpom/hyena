@@ -281,6 +281,52 @@ A system is loaded from its three components:
  * if the field is not given either in the Python template, this result in an error if the field is primitive, or a warning otherwise
  * if other fields are provided in the JSON file or in the Python template, they are included in the generated objects and considered as constant fields (and as before, if a field is defined at both places, its value from the JSON file is preferred)
 
+### Jumps
+
+`hyena` provides a way to arbitrarily assign the current location of nodes during the execution of an action, regardless of the existing transitions.
+This is implemented as an exception `Jump` that can be raised from actions.
+Look at `examples/jump.py` for instance:
+
+```python
+from hyena import Template, Dummy, Jump
+
+system = node = Dummy()
+
+class Transition(Template):
+    def action(self):
+        node.count += 1
+        if node.count == 3:
+            node.count = 0
+            raise Jump(0, 0)
+        elif self.sameloc():
+            return 0
+        else:
+            return node.count
+    def sameloc(self):
+        idx = node.inputs[0].node
+        return node.current == system.nodes[idx].current
+
+class Node(Template):
+    current = 0
+    count = 0
+```
+
+This template is similar to `examples/counter-tpl.py` except that, when `node.count` is found to reach `3` in `Transition.action`, it is reset to `0` and exception `Jump` is raised.
+`Jump` expects a sequence of locations indexes to be assigned as `node.current` for each node, somehow, `Jump(*locs)` is interpreted as:
+
+```python
+for node, jump in zip(system.nodes, locs):
+    if jump is not None:
+        node.current = locs
+```
+
+Equivalently we could have used `Jump({0: 0, 1: 0})`, which is another way to specify that we want the nodes `0` and `1` to both jump to their locations `0`.
+This notation with a dict is simpler when there are many locations and only a few ones have to jump, it avoids writing things like, for instance, `Jump(None, None, None, None, 2)` which can be replaced with `Jump({4: 2})`.
+
+Note that this kind of actions allows to execute transitions that do not exist in the automata, which is the reason why we call them _jumps_ and implement them using an exception to emphasis that it breaks the standard execution rule.
+Note also that, like in the example above, assignments performed during the action before raising `Jump` are committed to the state.
+Indeed, raising `Jump` is not an error but a way to specify that we want to break the automata semantics and perform direct jumps into new locations.
+
 ### Drawing models
 
 `hyena` allows to draw a model or a fully instantiated system.

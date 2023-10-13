@@ -45,9 +45,19 @@ class System(Struct):
             trans = self[path]
             try:
                 self.state = state
-                act = trans.action()
-                if act is not None:
-                    self[path[:2]].current = trans.target
-                    yield self.state, path, act
+                try:
+                    act = trans.action()
+                    if act is not None:
+                        self[path[:2]].current = trans.target
+                        yield self.state, path, act
+                except Jump as jmp:
+                    for nid, loc in jmp.jumps.items():
+                        node = self.nodes[nid]
+                        if 0 <= loc < len(node.locations):
+                            node.current = loc
+                        else:
+                            raise ValueError(f"invalid jump to {loc}"
+                                             f" in node {nid}")
+                    yield self.state, path, None
             finally:
                 self.state = old

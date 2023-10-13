@@ -9,7 +9,7 @@ import importlib
 from . import State
 from colorama import Fore as F, Style as S, Back as B
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 
 
 readline.parse_and_bind("tab: complete")
@@ -88,7 +88,7 @@ class Trans(tuple):
 class Event:
     state: State
     trans: Optional[Trans]
-    cost: int
+    action: Any
 
 
 class Simulator:
@@ -124,20 +124,16 @@ class Simulator:
                 pass
 
     @property
-    def cost(self):
-        return sum(e.cost for e in self.trace)
-
-    @property
     def last(self):
         return self.trace[-1]
 
     def _print_event(self, index):
         event = self.trace[index]
         if event.trans is None:
-            print(f"{F.RED}>>> init {S.DIM}(${self.cost}){S.RESET_ALL}")
+            print(f"{F.RED}>>> init{S.RESET_ALL}")
         else:
-            print(f"{F.RED}>>> system.{event.trans} {S.DIM}(+${event.cost}"
-                  f" => ${self.cost}){S.RESET_ALL}")
+            action = "<jump>" if event.action is None else event.action
+            print(f"{F.RED}>>> system.{event.trans} => {action}{S.RESET_ALL}")
         print(tree(f"{F.RED}#{index}{S.RESET_ALL}", event.state))
 
     def _print_last(self):
@@ -150,13 +146,14 @@ class Simulator:
             last = self.trace[-1]
             for num, evt in enumerate(self.events):
                 small = diff(last.state, evt.state)
+                action = "<jump>" if evt.action is None else evt.action
                 if small:
                     print(tree(f"{F.YELLOW}[{num}] system.{evt.trans}"
-                               f" {S.DIM}+${evt.cost}{S.RESET_ALL}"
+                               f" => {action}{S.RESET_ALL}"
                                f" {S.DIM}(diff){S.RESET_ALL}", small))
                 else:
                     print(f"{F.YELLOW}[{num}] system.{evt.trans}"
-                          f" {S.DIM}+${evt.cost}{S.RESET_ALL}"
+                          f" => {action}{S.RESET_ALL}"
                           f" (same state)")
 
     def _long_prompt(self):

@@ -75,8 +75,8 @@ class Explorer:
                     {
                         "state": s,
                         "trans": t,
-                        "cost": c
-                    } for s, t, c in succ]
+                        "action": a
+                    } for s, t, a in succ]
             } for state, succ in self.succ.items()
         ], out, indent=2)
 
@@ -161,13 +161,10 @@ if __name__ == "__main__":
                          f"{F.RESET} {err.exc}")
         if args.trace and explorer is not None and err.state is not None:
             print(f"{F.RED}### trace ###{F.RESET}")
-            cost = 0
             for n, e in enumerate(explorer.trace(err.state)):
                 if e.trans is not None:
-                    cost += e.cost
                     print(f"{F.RED}>>>{F.RESET} system.{e.trans}"
-                          f" {S.DIM}{F.RED}(+${e.cost}"
-                          f" => ${cost}){S.RESET_ALL}")
+                          f" {S.DIM}{F.RED}({e.action}){S.RESET_ALL}")
                 print(tree(f"{F.BLUE}#{n}:{F.RESET}", e.state))
         parser.exit(3, "\n".join(lines) + "\n")
     if not args.verbose:
