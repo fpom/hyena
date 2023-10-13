@@ -1,15 +1,16 @@
-import logging
-import json
-import types
 import importlib.util as imputil
+import json
+import logging
+import types
+import re
 
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum as _StrEnum
-from typing import Any, Self, get_origin, get_args, Annotated
-from inspect import isclass, getmembers, isfunction, getmodule
-from frozendict import frozendict
+from inspect import getmembers, getmodule, getsource, isclass, isfunction
+from typing import Annotated, Any, Self, get_args, get_origin
 
+from frozendict import frozendict
 
 #
 # logging
@@ -408,6 +409,9 @@ class Method:
         if self.action and ret is None:
             self.context["system"].state = state
         return ret
+
+    def has_jump(self):
+        return re.search(r"raise\s+Jump", getsource(self.func)) is not None
 
     def _load_func(self, name, data, ret):
         if isinstance(data, str) or (ret and isinstance(data, ret)):

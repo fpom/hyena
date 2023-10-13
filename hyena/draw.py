@@ -80,8 +80,13 @@ def object_dot(out, root, graph="", cluster="", automata=False):
                 out.write(f"    loc_{nnum}_{lnum} [{attrs}]\n")
                 if automata:
                     for trans in loc.transitions:
+                        if trans.action.has_jump():
+                            attr = f' [arrowhead=dot color=darkred]'
+                        else:
+                            attr = ""
                         out.write(f"    loc_{nnum}_{lnum}"
-                                  f" -> loc_{nnum}_{trans.target}\n")
+                                  f" -> loc_{nnum}_{trans.target}"
+                                  f"{attr}\n")
         out.write("  }\n")
     for nnum, node in enumerate(root.nodes):
         for pred in node.inputs:
