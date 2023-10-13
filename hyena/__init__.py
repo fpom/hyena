@@ -648,3 +648,7 @@ class Jump(Exception):
         self.jumps = {int(k): int(v)
                       for k, v in jumps.items()
                       if v is not None}
+
+
+class Abort(Exception):
+    pass

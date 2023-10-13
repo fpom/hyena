@@ -281,7 +281,10 @@ A system is loaded from its three components:
  * if the field is not given either in the Python template, this result in an error if the field is primitive, or a warning otherwise
  * if other fields are provided in the JSON file or in the Python template, they are included in the generated objects and considered as constant fields (and as before, if a field is defined at both places, its value from the JSON file is preferred)
 
-### Jumps
+### Aborts and jumps
+
+If a `Transition.action` raises exception `hyena.Abort`, it cannot be executed but the exception is silently discarded.
+This is equivalent to returning `None` from `Transition.action` but its is possible to do it from any function that is called from `action`.
 
 `hyena` provides a way to arbitrarily assign the current location of nodes during the execution of an action, regardless of the existing transitions.
 This is implemented as an exception `Jump` that can be raised from actions.

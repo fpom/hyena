@@ -50,6 +50,8 @@ class System(Struct):
                     if act is not None:
                         self[path[:2]].current = trans.target
                         yield self.state, path, act
+                except Abort:
+                    pass
                 except Jump as jmp:
                     for nid, loc in jmp.jumps.items():
                         node = self.nodes[nid]
