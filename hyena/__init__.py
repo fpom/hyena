@@ -387,6 +387,9 @@ class Method:
         self.context = None
         self.action = action
 
+    def source(self):
+        return getsource(self.func)
+
     def __repr__(self):
         try:
             name = self.func.__qualname__
@@ -449,6 +452,15 @@ class Struct:
         for name, field in cls.__dataclass_fields__.items():
             if name != "__pydefs__":
                 yield name, Field(field.type, cls)
+
+    @classmethod
+    def __static__(cls):
+        for _, ftype in cls._fields():
+            if (not ftype.const
+                    or (issubclass(ftype.base, Struct)
+                        and not ftype.base.__static__())):
+                return False
+        return True
 
     def __post_init__(self):
         self.__dict__["__extra__"] = {}
