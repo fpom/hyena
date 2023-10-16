@@ -384,11 +384,9 @@ class State(frozendict):
 class Method:
     def __init__(self, name, source, ret, action=False):
         self.func = self._load_func(name, source, ret)
+        self.name = name
         self.context = None
         self.action = action
-
-    def source(self):
-        return getsource(self.func)
 
     def __repr__(self):
         try:
