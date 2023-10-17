@@ -451,15 +451,6 @@ class Struct:
             if name != "__pydefs__":
                 yield name, Field(field.type, cls)
 
-    @classmethod
-    def __static__(cls):
-        for _, ftype in cls._fields():
-            if (not ftype.const
-                    or (issubclass(ftype.base, Struct)
-                        and not ftype.base.__static__())):
-                return False
-        return True
-
     def __post_init__(self):
         self.__dict__["__extra__"] = {}
         self.__dict__["__fields__"] = {n: t for n, t in self._fields()}
