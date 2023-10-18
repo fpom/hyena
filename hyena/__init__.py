@@ -399,7 +399,7 @@ class Method:
             return repr(f"<bound method {name}>")
 
     def bind(self, obj, context):
-        self.context = dict(context)
+        self.context = context | {"self": obj}
         self.func = types.MethodType(self.func, obj)
 
     def __call__(self, *largs, **kwargs):
@@ -638,7 +638,7 @@ class Struct:
             elif isinstance(p, int):
                 obj = obj[p]
             else:
-                raise ValueError("invalid object path {path!r}")
+                raise ValueError(f"invalid object path {path!r}")
         return obj
 
 
