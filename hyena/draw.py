@@ -5,7 +5,6 @@ import enum
 from inspect import isclass
 from pathlib import Path
 from . import ena
-from . import Field
 
 
 def class_dot(out, root, graph=""):
