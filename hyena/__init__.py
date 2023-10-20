@@ -385,7 +385,7 @@ class Method:
     def __init__(self, name, source, ret, action=False):
         self.func = self._load_func(name, source, ret)
         self.name = name
-        self.context = None
+        self.context = {}
         self.action = action
 
     def __repr__(self):
