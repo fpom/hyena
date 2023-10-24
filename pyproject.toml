@@ -18,6 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "colorama",
+    "typer[all]",
     "frozendict",
 ]
 
