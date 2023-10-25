@@ -191,10 +191,8 @@ def main(
         raise Exit(3)
     with stdout.status(explorer.status()) as status:
         try:
-            import time
             for state, succs in explorer:
                 status.update(explorer.status())
-                time.sleep(1)
                 if verbose:
                     stdout.print(state_text(state),
                                  f"=> [green]+{len(succs)}[/]",
