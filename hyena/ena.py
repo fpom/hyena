@@ -60,6 +60,6 @@ class System(Struct):
                         else:
                             raise ValueError(f"invalid jump to {loc}"
                                              f" in node {nid}")
-                    yield self.state, path, None
+                    yield self.state, path, jmp.cost
             finally:
                 self.state = old

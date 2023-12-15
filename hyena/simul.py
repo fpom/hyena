@@ -132,8 +132,8 @@ class Simulator:
         if event.trans is None:
             print(f"{F.RED}>>> init{S.RESET_ALL}")
         else:
-            action = "<jump>" if event.action is None else event.action
-            print(f"{F.RED}>>> system.{event.trans} => {action}{S.RESET_ALL}")
+            print(f"{F.RED}>>> system.{event.trans}"
+                  f" => {event.action}{S.RESET_ALL}")
         print(tree(f"{F.RED}#{index}{S.RESET_ALL}", event.state))
 
     def _print_last(self):
@@ -146,14 +146,13 @@ class Simulator:
             last = self.trace[-1]
             for num, evt in enumerate(self.events):
                 small = diff(last.state, evt.state)
-                action = "<jump>" if evt.action is None else evt.action
                 if small:
                     print(tree(f"{F.YELLOW}[{num}] system.{evt.trans}"
-                               f" => {action}{S.RESET_ALL}"
+                               f" => {evt.action}{S.RESET_ALL}"
                                f" {S.DIM}(diff){S.RESET_ALL}", small))
                 else:
                     print(f"{F.YELLOW}[{num}] system.{evt.trans}"
-                          f" => {action}{S.RESET_ALL}"
+                          f" => {evt.action}{S.RESET_ALL}"
                           f" (same state)")
 
     def _long_prompt(self):

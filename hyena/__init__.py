@@ -643,12 +643,10 @@ class Struct:
 
 
 class Jump(Exception):
-    def __init__(self, *seq, **idx):
+    def __init__(self, cost, jumps):
         super().__init__()
-        jumps = idx | {i: s for i, s in enumerate(seq) if s is not None}
-        self.jumps = {int(k): int(v)
-                      for k, v in jumps.items()
-                      if v is not None}
+        self.cost = cost
+        self.jumps = {int(k): int(v) for k, v in jumps.items()}
 
 
 class Abort(Exception):

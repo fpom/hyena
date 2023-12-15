@@ -9,7 +9,7 @@ class Transition(Template):
         node.count += 1
         if node.count == 3:
             node.count = 0
-            raise Jump(0, 0)
+            raise Jump(0, {0: 0, 1: 0})
         elif self.sameloc():
             return 0
         else:

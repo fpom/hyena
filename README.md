@@ -300,7 +300,7 @@ class Transition(Template):
         node.count += 1
         if node.count == 3:
             node.count = 0
-            raise Jump(0, 0)
+            raise Jump(0, {0: 0, 1: 0})
         elif self.sameloc():
             return 0
         else:
@@ -315,16 +315,8 @@ class Node(Template):
 ```
 
 This template is similar to `examples/counter-tpl.py` except that, when `node.count` is found to reach `3` in `Transition.action`, it is reset to `0` and exception `Jump` is raised.
-`Jump` expects a sequence of locations indexes to be assigned as `node.current` for each node, somehow, `Jump(*locs)` is interpreted as:
-
-```python
-for node, jump in zip(system.nodes, locs):
-    if jump is not None:
-        node.current = locs
-```
-
-Equivalently we could have used `Jump({0: 0, 1: 0})`, which is another way to specify that we want the nodes `0` and `1` to both jump to their locations `0`.
-This notation with a dict is simpler when there are many locations and only a few ones have to jump, it avoids writing things like, for instance, `Jump(None, None, None, None, 2)` which can be replaced with `Jump({4: 2})`.
+`Jump` expects first the action to decorate the transition with, and a `dict` that associates to each node index its new `.current`.
+So here this jumps is like returning `0` but at the same time we force the nodes `0` and `1` to both jump to their locations `0`.
 
 Note that this kind of actions allows to execute transitions that do not exist in the automata, which is the reason why we call them _jumps_ and implement them using an exception to emphasis that it breaks the standard execution rule.
 Note also that, like in the example above, assignments performed during the action before raising `Jump` are committed to the state.
