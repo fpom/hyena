@@ -1,8 +1,9 @@
-from hyena import ena, Template
+from hyena import Template
+from . import counter as xena
 
 # to silent typecheckers
-system = ena.System.dummy()
-node = ena.Node.dummy()
+system = xena.System.dummy()
+node = xena.Node.dummy()
 
 
 class Transition(Template):

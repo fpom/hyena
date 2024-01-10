@@ -1,10 +1,10 @@
-from hyena import ena
+from hyena import ena, Annotated, F
 from hyena.ena import *
 
 
 @dataclass
 class Node(ena.Node):
-    count: int
+    count: Annotated[int, F.MUTABLE()]
 
 
 @dataclass

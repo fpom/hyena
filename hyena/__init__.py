@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import StrEnum as _StrEnum
 from inspect import getmembers, getmodule, getsource, isclass, isfunction
 from collections.abc import Callable
-from typing import Annotated, Any, Self, get_args, get_origin
+from typing import Annotated, Optional, Union, Any, Self, get_args, get_origin
 
 from frozendict import frozendict
 
@@ -92,49 +92,31 @@ class array(list):
 
 class F(dict):
     annot = {
-        "within": None,   # field is .base constrained within .within
-        "array": False,   # field is an array of .base
-        "index": None,    # field is the index of an array .index
-        "func": False,    # field is a function returning .base
-        "action": False,  # field is an action
-        "macro": None,    # field is a macro evaluated at compile time
-        "prime": False,   # field is semantically required
-        "const": False,   # field is not mutable
-        "option": False,  # field is optional
-        "unique": None    # field value is unique within given scope
+        "array": False,   # array of .base
+        "index": None,    # index of .index or an array indexed by .index
+        "func": False,    # function returning .base
+        "macro": None,    # macro evaluated at compile time
+        "prime": False,   # semantically required
+        "const": True,    # mutable if .const is True
+        "option": False,  # optional
+        "unique": None    # value is unique within given scope
     }
 
     @classmethod
     def INDEX(cls, array):
-        return cls(within=array)
-
-    @classmethod
-    def ARRAY(cls, index=None):
-        return cls(array=True, index=index)
-
-    @classmethod
-    def EXPR(cls):
-        return cls(func=True)
-
-    @classmethod
-    def ACTION(cls):
-        return cls(func=True, action=True)
+        return cls(index=array)
 
     @classmethod
     def PRIME(cls):
         return cls(prime=True)
 
     @classmethod
-    def CONST(cls):
-        return cls(const=True)
+    def MUTABLE(cls):
+        return cls(const=False)
 
     @classmethod
     def MACRO(cls, expr):
         return cls(macro=expr, const=True)
-
-    @classmethod
-    def OPTION(cls):
-        return cls(option=True)
 
     @classmethod
     def UNIQUE(cls, scope):
@@ -154,18 +136,23 @@ class Field:
         else:
             self.base, annot = hint, {}
         self.annot = F.annot | annot
-        if self.array:
-            assert get_origin(self.base) is list
+        if get_origin(self.base) is Union:
+            self.base, *rest = get_args(self.base)
+            assert (rest == [None]) or (rest == [type(None)])
+            self.annot["option"] = True
+        if get_origin(self.base) is list:
             self.base = get_args(self.base)[0]
-        if self.func:
-            assert get_origin(self.base) is Callable
-            a, r = get_args(self.base)
-            assert a == []
-            if self.action:
-                assert r is None
-                self.base = type(None)
+            self.annot["array"] = True
+        if get_origin(self.base) is Callable:
+            if not (args := get_args(self.base)):
+                r = type(None)
             else:
-                self.base = r
+                a, r = args
+                assert a == []
+                if r is None:
+                    r = type(None)
+            self.base = r
+            self.annot["func"] = True
         if parent is not None and issubclass(self.base, Struct):
             self.base = getattr(getmodule(parent), self.base.__name__)
 
@@ -173,13 +160,13 @@ class Field:
         return self.annot[name]
 
     def __str__(self):
-        if self.within:
-            text = f"#{self.within}"
-        elif self.array:
+        if self.array:
             if self.index:
                 text = f"[{self.base.__name__} {self.index}]"
             else:
                 text = f"[{self.base.__name__}]"
+        elif self.index:
+            text = f"#{self.index}"
         elif self.func:
             if self.base is type(None):
                 text = "()"
@@ -277,11 +264,10 @@ class State(frozendict):
 
 
 class Method:
-    def __init__(self, name, source, ret, action=False):
+    def __init__(self, name, source, ret):
         self.func = self._load_func(name, source, ret)
         self.name = name
         self.context = {}
-        self.action = action
 
     def __repr__(self):
         try:
@@ -299,11 +285,12 @@ class Method:
 
     def __call__(self, *largs, **kwargs):
         self.func.__globals__.update(self.context)
-        if self.action:
-            state = self.context["system"].state
-        ret = self.func(*largs, **kwargs)
-        if self.action and ret is None:
+        state = self.context["system"].state
+        try:
+            ret = self.func(*largs, **kwargs)
+        except Abort:
             self.context["system"].state = state
+            raise
         return ret
 
     def has_jump(self):
@@ -376,7 +363,7 @@ class Struct:
             elif isclass(ftype.base) and issubclass(ftype.base, Struct):
                 obj = ftype.base.dummy()
             elif ftype.func:
-                obj = Method(name, None, ftype.base, ftype.action)
+                obj = Method(name, None, ftype.base)
             else:
                 obj = ftype.base()
             if not ftype.option and ftype.array:
@@ -459,7 +446,7 @@ class Struct:
                 if data is None:
                     return None
                 else:
-                    return Method(name, data, ftype.base, ftype.action)
+                    return Method(name, data, ftype.base)
             elif data is None and ftype.option:
                 return None
             else:
