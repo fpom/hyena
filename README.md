@@ -613,3 +613,5 @@ Dependency to `colorama` is a legacy from the first versions and it will be repl
 ## Licence
 
 `hyena` is (C) 2023 Franck Pommereau <franck.pommereau@univ-evry.fr> and released under the terms of the MIT licence, see `LICENCE.md`.
+
+This work was supported by the French government as part of the _France 2030_ program, within the framework of the SystemX Technological Research Institute.
