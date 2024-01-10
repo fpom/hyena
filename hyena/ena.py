@@ -3,30 +3,52 @@ from . import *
 
 @dataclass
 class Transition(Struct):
-    target: Prime[Const[Index["Node.locations"]]]
-    action: Prime[Const[Action]]
+    target: Annotated[int,
+                      F.PRIME()
+                      | F.CONST()
+                      | F.INDEX("Node.locations")]
+    action: Annotated[Callable[[], None],
+                      F.PRIME()
+                      | F.CONST()
+                      | F.ACTION()]
 
 
 @dataclass
 class Location(Struct):
-    transitions: Prime[Const[Array[Transition]]]
+    transitions: Annotated[list[Transition],
+                           F.PRIME()
+                           | F.CONST()
+                           | F.ARRAY()]
 
 
 @dataclass
 class Input(Struct):
-    node: Prime[Const[Index["System.nodes"]]]
+    node: Annotated[int,
+                    F.PRIME()
+                    | F.CONST()
+                    | F.INDEX("System.nodes")]
 
 
 @dataclass
 class Node(Struct):
-    inputs: Const[Array[Input]]
-    locations: Prime[Const[Array[Location]]]
-    current: Prime[Index[".locations"]]
+    inputs: Annotated[list[Input],
+                      F.CONST()
+                      | F.ARRAY()]
+    locations: Annotated[list[Location],
+                         F.PRIME()
+                         | F.CONST()
+                         | F.ARRAY()]
+    current: Annotated[int,
+                       F.PRIME()
+                       | F.INDEX(".locations")]
 
 
 @dataclass
 class System(Struct):
-    nodes: Prime[Const[Array[Node]]]
+    nodes: Annotated[list[Node],
+                     F.PRIME()
+                     | F.CONST()
+                     | F.ARRAY()]
 
     def __post_init__(self):
         super().__post_init__()

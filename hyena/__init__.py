@@ -8,6 +8,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum as _StrEnum
 from inspect import getmembers, getmodule, getsource, isclass, isfunction
+from collections.abc import Callable
 from typing import Annotated, Any, Self, get_args, get_origin
 
 from frozendict import frozendict
@@ -89,7 +90,7 @@ class array(list):
 #
 
 
-class Field:
+class F(dict):
     annot = {
         "within": None,   # field is .base constrained within .within
         "array": False,   # field is an array of .base
@@ -100,24 +101,73 @@ class Field:
         "prime": False,   # field is semantically required
         "const": False,   # field is not mutable
         "option": False,  # field is optional
-        "unique": None    # field valeu is unique within given scope
+        "unique": None    # field value is unique within given scope
     }
 
+    @classmethod
+    def INDEX(cls, array):
+        return cls(within=array)
+
+    @classmethod
+    def ARRAY(cls, index=None):
+        return cls(array=True, index=index)
+
+    @classmethod
+    def EXPR(cls):
+        return cls(func=True)
+
+    @classmethod
+    def ACTION(cls):
+        return cls(func=True, action=True)
+
+    @classmethod
+    def PRIME(cls):
+        return cls(prime=True)
+
+    @classmethod
+    def CONST(cls):
+        return cls(const=True)
+
+    @classmethod
+    def MACRO(cls, expr):
+        return cls(macro=expr, const=True)
+
+    @classmethod
+    def OPTION(cls):
+        return cls(option=True)
+
+    @classmethod
+    def UNIQUE(cls, scope):
+        return cls(unique=scope)
+
+    def __init__(self, hint=None, parent=None, **annot):
+        for key in annot:
+            if key not in self.annot:
+                raise TypeError(f"unknown field annotation: {key}")
+        return super().__init__(annot)
+
+
+class Field:
     def __init__(self, hint, parent=None):
-        self.base, annot = get_args(hint)
-        self.annot = self.annot | annot
+        if get_origin(hint) is Annotated:
+            self.base, annot = get_args(hint)
+        else:
+            self.base, annot = hint, {}
+        self.annot = F.annot | annot
+        if self.array:
+            assert get_origin(self.base) is list
+            self.base = get_args(self.base)[0]
+        if self.func:
+            assert get_origin(self.base) is Callable
+            a, r = get_args(self.base)
+            assert a == []
+            if self.action:
+                assert r is None
+                self.base = type(None)
+            else:
+                self.base = r
         if parent is not None and issubclass(self.base, Struct):
             self.base = getattr(getmodule(parent), self.base.__name__)
-
-    def __class_getitem__(cls, arg):
-        if isinstance(arg, tuple):
-            base, annot = arg
-        else:
-            base, annot = arg, {}
-        if get_origin(base) is Annotated:
-            base, a = get_args(base)
-            annot |= a
-        return Annotated[base, annot]
 
     def __getattr__(self, name):
         return self.annot[name]
@@ -150,164 +200,9 @@ class Field:
         return text
 
 
-class Index:
-    def __class_getitem__(cls, arg):
-        return Field[int, {"within": arg}]
-
-
-class Array:
-    def __class_getitem__(cls, args):
-        try:
-            typ, idx = args
-        except TypeError:
-            typ, idx = args, None
-        return Field[typ, {"array": True, "index": idx}]
-
-
-class Expr:
-    def __class_getitem__(cls, arg):
-        return Field[arg, {"func": True}]
-
-
-Action = Field[None, {"func": True, "action": True}]
-
-
-class Prime:
-    def __class_getitem__(cls, arg):
-        return Field[arg, {"prime": True}]
-
-
-class Const:
-    def __class_getitem__(cls, arg):
-        return Field[arg, {"const": True}]
-
-
-class Macro:
-    def __class_getitem__(cls, arg):
-        typ, expr = arg
-        return Field[typ, {"macro": expr, "const": True}]
-
-
-class Option:
-    def __class_getitem__(cls, arg):
-        return Field[arg, {"option": True}]
-
-
-class Unique:
-    def __class_getitem__(cls, arg):
-        typ, scope = arg
-        return Field[typ, {"unique": scope}]
-
-
 #
 # Python templating
 #
-
-class Dummy:
-    def __getattr__(self, _):
-        return self
-
-    def __getitem__(self, _):
-        return self
-
-    def __delitem__(self, _):
-        pass
-
-    def __setattr__(self, _, __):
-        pass
-
-    def __setitem__(self, _, __):
-        pass
-
-    def __contains__(self, _):
-        return True
-
-    def __add__(self, _):
-        return self
-
-    def __sub__(self, _):
-        return self
-
-    def __mul__(self, _):
-        return self
-
-    def __div__(self, _):
-        return self
-
-    def __truediv__(self, _):
-        return self
-
-    def __floordiv__(self, _):
-        return self
-
-    def __pow__(self, _):
-        return self
-
-    def __mod__(self, _):
-        return self
-
-    def __lshift__(self, _):
-        return self
-
-    def __rshift__(self, _):
-        return self
-
-    def __and__(self, _):
-        return self
-
-    def __or__(self, _):
-        return self
-
-    def __xor__(self, _):
-        return self
-
-    def __neg__(self):
-        return self
-
-    def __pos__(self):
-        return self
-
-    def __abs__(self):
-        return self
-
-    def __invert__(self):
-        return self
-
-    def __int__(self):
-        return 0
-
-    def __float__(self):
-        return 0.0
-
-    def __lt__(self, _):
-        return True
-
-    def __le__(self, _):
-        return True
-
-    def __eq__(self, _):
-        return True
-
-    def __ne__(self, _):
-        return True
-
-    def __gt__(self, _):
-        return True
-
-    def __ge__(self, _):
-        return True
-
-    def __bool__(self):
-        return True
-
-    def __call__(self, *_, **__):
-        return self
-
-    def __len__(self):
-        return 0
-
-    def __iter__(self):
-        yield self
 
 
 class Template:
@@ -471,6 +366,23 @@ class Struct:
             elif ftype.const:
                 raise TypeError(f"cannot assign const field {fname}")
         super().__setattr__(name, value)
+
+    @classmethod
+    def dummy(cls) -> Self:
+        fields = {}
+        for name, ftype in cls._fields():
+            if ftype.option:
+                obj = None
+            elif isclass(ftype.base) and issubclass(ftype.base, Struct):
+                obj = ftype.base.dummy()
+            elif ftype.func:
+                obj = Method(name, None, ftype.base, ftype.action)
+            else:
+                obj = ftype.base()
+            if not ftype.option and ftype.array:
+                obj = (obj,) * 3
+            fields[name] = obj
+        return cls(__pydefs__=None, **fields)
 
     @classmethod
     def from_json(cls, source, pydefs=None) -> Self:

@@ -225,12 +225,13 @@ Thus, when using a Python type checker or linter while writing the template abov
 This can be fixed by adding two lines at the beginning of the template:
 
 ```python
-from hyena import Dummy
-system = node = Dummy()
+from hyena import ena
+system = ena.System.dummy()
+node = ena.System.dummy()
 ```
 
-The two objects are now declared and class `Dummy` makes reasonable efforts to satisfy type checkers.
-In general, every name that is expected to exist at runtime only and is used inside a `Template` method can be declared this way.
+The two objects are now declared initialised consistently with dummy data.
+In general, every name that is expected to exist at runtime only and is used inside a `Template` method can be declared this way: `system`, `node`, `location`, `transition`, and `input`.
 
 Moreover, every name that is visible within the template file will be visible from the functions defined here.
 For instance, if we add a global declaration `spam = 42` in `examples/simple.py` then method `Transition.cost` could refer to it.
@@ -291,9 +292,10 @@ This is implemented as an exception `Jump` that can be raised from actions.
 Look at `examples/jump.py` for instance:
 
 ```python
-from hyena import Template, Dummy, Jump
+from hyena import ena, Template, Jump
 
-system = node = Dummy()
+system = ena.System.dummy()
+node = ena.Node.dummy()
 
 class Transition(Template):
     def action(self):
@@ -466,21 +468,10 @@ For instance, one could run:
 
 ```shell
 sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py -t -a 'system.nodes[0].current == 0'
-... 3 states + 2 to explore
-### trace ###
-#0:
- ├─ nodes[0]
- │  └─ current: 0
- └─ nodes[1]
-    └─ current: 0
->>> system.nodes[0].locations[0].transitions[0] (+$0 => $0)
-#1:
- ├─ nodes[0]
- │  └─ current: 1
- └─ nodes[1]
-    └─ current: 0
-assert failed: system.nodes[0].current == 0
-on state: system[nodes=(node[current=1], node[current=0])]
+assert failed 'system.nodes[0].current == 0'
+#0 system[nodes=(node[current=0], node[current=0])]
+>> system.nodes[0].locations[0].transitions[0] => 0
+#1 system[nodes=(node[current=1], node[current=0])]
 ```
 
 As shown above, assertions are Python Boolean expressions that check the values of some fields in a state.
@@ -524,23 +515,19 @@ Then, we would like that the cost of a transition is either `0` as before, or is
 This can be achieved as in `examples/counter.py`:
 
 ```python
-from hyena import Field, ena
+from hyena import ena
 from hyena.ena import *
 
 @dataclass
 class Node(ena.Node):
-    count: Field[int]
+    count: int
 
 @dataclass
 class System(ena.System):
     pass
 ```
 
-In this module, we import from `hyena`:
-
- * type hint `Field` that allows to define fields in a HyENA class
- * sub-module `ena` that we want to extend
-
+In this module, we import from `hyena` the sub-module `ena` that we want to extend
 Then we import everything from `hyena.ena` in order to make visible its classes.
 Next, we extend class `Node` by adding a field `count` that is an `int` (doing so, we hide the previous value of `Node` that was imported from `hyena.ena`).
 Finally, we extend class `System` but we add noting to it.
@@ -552,6 +539,10 @@ To instantiate this model, we can reuse `examples/simple.json` as its JSON file,
 
 ```python
 from hyena import Template
+
+# to silent typecheckers
+system = ena.System.dummy()
+node = ena.Node.dummy()
 
 class Transition(Template):
     def action(self):
@@ -575,30 +566,32 @@ This template defines the default values for:
  * `Node.current` (which will be overridden from JSON because so does `examples/simple.json`)
  * `Node.count` that is zero initially
 
-#### `Struct` and `Field`
+#### `Struct` and fields
 
 Every class defined in an extension module like above should be either a subclass of one from basic HyENAs, or a subclass of `hyena.Struct` (that itself is the parent class of HyENAs classes).
 `hyena` also provides `hyena.StrEnum` that is a recognised extension of standard `enum.StrEnum` (in particular, it is drawn in class diagrams).
 Any other class or object defined in an extension module may not work as expected as `hyena` will not consider it when constructing the scopes of methods.
 On the other hand, anything declared within a Python template will be visible at run time.
 
-The fields of a `Struct` subclass should be all declared without a default value (this is templates' job do do this) and with a type hint that `hyena` understands:
+The fields of a `Struct` subclass should be all declared _without_ a default value (this is templates' job do do this) and with a type hint that `hyena` understands, that is either a basic Python type hint `hint`, `Annotated[hint, ...]` to add further information needed by `hyena`.
 
- * `Field[base]` is a field of type `base` (where `base` is one of `bool`, `int`, a subclass of `Struct`, or an instance of `StrEnum`)
- * `Index[array]` is an `int`-valued field that ranges over the index of the given array (passed as a string), for instance `Node.current` has type hint `Index[".location"]`, and for `Input.node` it is `Index["Node.nodes"]`.
- * `Array[base]` is an array that contains instance of type `base`
- * `Array[base, size]` is an array that contains values described by `base` and whose size is constrained by field `size` itself given as a string that is either:
+ * `hint` can basically be one of `bool`, `int`, a subclass of `Struct`, or an instance of `StrEnum`
+ * `Annotated[int, F.INDEX(array)]` is an `int`-valued field that ranges over the index of the given array (passed as a string), for instance `Node.current` has type hint `Annotated[int, F.INDEX(".location")]`, and for `Input.node` it is `Annotated[int, F.INDEX("Node.nodes")]`
+ * `Annotated[list[base], F.ARRAY()]` is an array that contains instance of type `base`
+ * `Annotated[list[base], F.ARRAY(size)]` is an array that contains values described by `base` and whose size is constrained by field `size` itself given as a string that is either:
    - the name of an `int`-valued field (eg, `".name"` to refer to a field in the current class, or `"Class.name"` to refer to a field in another class)
    - or as the index in another array (eg, `#.name` or `#Class.name`) which means that both arrays have the same size
- * `Expr[base]` is an expression that evaluates to `base` (`int` or `bool`) and may be concretely implemented as a method or a string of Python source code, they are assumed to have no side-effects
- * `Action` is the type of `Transition.action` and corresponds to arbitrary methods that may have side-effects
- * `Const[hint]` is a non-mutable field, if `Const` is not used then the field is mutable
- * `Option[hint]` is an optional field, if it is not provided as JSON or Python template, then its value is set to `None` without any warning
- * `Unique[hint, scope]` is a field whose value is expected to be unique in the given `scope`, the latter being the name of a `Struct` subclass; for instance, defining a field `Node.name: Unique[str, "System"]` states that every `Node` instance should have a value in its field `.name` that is distinct from that in every other nodes; defining a field `Location.name: Unique[str, "Node"]` is similar but distinct nodes may have locations with the same `.name` as the scope is here limited to `Node`
- * `Macro[base, expr]` defines a constant field whose value has type `base` and will be computed from `expr` when the `System` is instantiated (ie, at the initial state), for instance, considering we have added `Node.name` as above, we could add `Input.name: Macro[str, "system.nodes[input.node].name"]` thus the name of an input is the name of the node it corresponds to
+ * `Annotated[Callable[[], base], F.FUNC()]` is an expression that evaluates to `base` (`int` or `bool`) and may be concretely implemented as a method or a string of Python source code, they are assumed to have no side-effects
+ * `Annotated[Callable[[], None], F.ACTION()]` is the type of `Transition.action` and corresponds to arbitrary methods that may have side-effects and return no values
+ * `Annotated[hint, F.CONST()]` is a non-mutable field, if `F.CONST()` is not used then the field is mutable
+ * `Annotated[hint, F.OPTION()]` is an optional field, if it is not provided as JSON or Python template, then its value is set to `None` without any warning
+ * `Annotated[hint, F.UNIQUE(scope)]` is a field whose value is expected to be unique in the given `scope`, the latter being the name of a `Struct` subclass; for instance, defining a field `Node.name: Annotated[str, F.UNIQUE("System")]` states that every `Node` instance should have a value in its field `.name` that is distinct from that in every other nodes; defining a field `Location.name: Annotated[str, F.UNIQUE("Node")]` is similar but distinct nodes may have locations with the same `.name` as the scope is here limited to `Node`
+ * `Annotated[base, F.MACRO(expr)]` defines a constant field whose value has type `base` and will be computed from `expr` when the `System` is instantiated (ie, at the initial state), for instance, considering we have added `Node.name` as above, we could add `Input.name: Annotated[str, F.MACRO("system.nodes[input.node].name)"]` thus the name of an input is the name of the node it corresponds to
 
+Several annotations may be combined with a `|`, for instance, `Annotated[int, F.OPTION() | F.CONST()]` is an optional constant `int`-field.
 Not all these typing constraints are currently enforced at runtime, but future version of `hyena` will progressively do it.
-Not also that, from a Python perspective, these type hints are currently not recognised by type checkers and so they may raise concerns with respect to the usage of fields.
+Note also that, these type hints are a bit redundant, for instance, `Annotated[list[int], F.ARRAY()]` somehow declares twice that the field is an array: one through `list[...]` and another time through `F.ARRAY()`.
+This is because `hyena` is not yet capable to fully understand arbitrary Python type hints, but this may improve in the future.
 
 ## Installation
 
@@ -611,7 +604,11 @@ sh> pip install .
 This will install `hyena` and its dependencies:
 
  * [`colorama`](https://github.com/tartley/colorama)
+ * [`typer`](https://typer.tiangolo.com)
+ * [`rich`](https://github.com/Textualize/rich)
  * [`frozendict`](https://github.com/Marco-Sulla/python-frozendict)
+
+Dependency to `colorama` is a legacy from the first versions and it will be replaced with `rich`.
 
 ## Licence
 

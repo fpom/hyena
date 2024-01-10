@@ -1,7 +1,8 @@
-from hyena import Template, Dummy
+from hyena import Template, ena
 
 # silent type checkers
-system = node = Dummy()
+system = ena.System.dummy()
+node = ena.Node.dummy()
 
 
 class Transition(Template):
