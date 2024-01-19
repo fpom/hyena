@@ -23,7 +23,7 @@ This basic model features 5 classes that can be seen as structures with predefin
  * `Transition`: stores one transition between two locations
  * `Input`: stores an explicit link between two nodes (to form an explicit network)
 
- Although the network may be left implicit and `Input` is not strictly necessary, we prefer to have it in the basic model to emphasis the network dimension of HyENAs.
+ Although the network may be left implicit and `Input` is not strictly necessary, we prefer to have it in the basic model to emphasize the network dimension of HyENAs.
 
  These classes and their relations are illustrated here:
 
@@ -37,7 +37,7 @@ Each field also has a type, noted as follows:
  * `[T]` is a fixed-length array of instances of class `T` (eg, `System.nodes` is an array of `Node` instances); arrays are implemented as a `tuple` if immutable, or as a custom `array` class if mutable 
  * `#.F` is an index of field `.F` is the current class (eg, `Node.current` is an index of `Node.locations`)
  * `#T.F` is an index of field `.F` in class `T` (eg, `Input.node` is an index of `System.nodes`)
- * `()` is a function, it may have side-effects on mutable fields, and may return a value, as explained below
+ * `()` is a function, it may have side effects on mutable fields, and may return a value, as explained below
 
 Note that these types are currently loosely enforced in simulation, for instance, it is possible to set `Node.current` to a negative value, but this will lead to errors in the simulation.
 So, even if it will be improved in future versions, currently it is mainly modeler's responsibility to respect the typing constraints.
@@ -58,7 +58,7 @@ From the fields depicted above, we can describe more precisely each class of the
  * a `Location` consists of an array of `Transition` instances
  * a `Transition` consists of:
    - a `.target` location given as an index in the current node's `.locations` field
-   - an `.action` that is a function, it may return a value to be recorded in the trace, it may also update the system by assigning some of its mutable fields
+   - a `.action` that is a function, it may return a value to be recorded in the trace, it may also update the system by assigning some of its mutable fields
 
 ## Execution semantics
 
@@ -157,7 +157,7 @@ make_action(system.nodes[1],
 ```
 
 In this code, the function `action` for each transition is defined within a closure that corresponds to its context, then it is assigned to the transition.
-Consequently, each such function can access names `system`, `node`, `location`, `transition` that correspond to the path that lead it it.
+Consequently, each such function can access names `system`, `node`, `location`, `transition` that correspond to the path that lead to it.
 Doing so, we can have the same body instead of `...` for all the functions:
 
 ```python
@@ -169,14 +169,14 @@ else:
 
 In this code, `node` is not the same for every function, but `system` is unique.
 
-To summarise, HyENAs' actions are defined in the scope of the objects that contain them: a node is in the scope of the system, a location is in the scope of its node, a transition is in the scope of its location, and an action is the scope of its transition.
+To summarize, HyENAs' actions are defined in the scope of the objects that contain them: a node is in the scope of the system, a location is in the scope of its node, a transition is in the scope of its location, and an action is the scope of its transition.
 These scopes are defined by the inclusion of one object into another, just like a Python scope, or closure, is defined by the inclusion of one function into another.
 Actions will be implemented as methods of (subclasses of) `Transition`.
 Auxiliary methods will be allowed for any class and their execution contexts will be defined exactly the same way.
 
 ### Transitions execution
 
-Executing transitions allows to build traces that are sequences of alternating states and transitions (with actions): starting from the initial state, a transition `t` may be executed if its action `t.action` returns a value `a` in the current execution context (`a` may be anything, including `None`).
+Executing transitions allows building traces that are sequences of alternating states and transitions (with actions): starting from the initial state, a transition `t` may be executed if its action `t.action` returns a value `a` in the current execution context (`a` may be anything, including `None`).
 But if `t.action` raises exception `Abort`, then the transition is forbidden.
 Thus, `t.action` plays the role of both a guard and an update, which is usually devoted to two separate functions.
 Having just one function is convenient to avoid recomputing things in the update things that have been computed in the guard.
@@ -220,7 +220,7 @@ class Transition(Template):
 
 First it imports base class `Template` from `hyena`.
 Then it defines a template for class `Transition` by sublassing `Template` and setting defaults for its field `.action`.
-This means that every `Transition` instance to be created will be initialised this way unless otherwise specified.
+This means that every `Transition` instance to be created will be initialized this way unless otherwise specified.
 We implement actions as a method of class `Transition`.
 Since this method is defined in the scope of `Transition`, it has access to global objects `node` and `system` (as well as `transition` and `location` that are not used here) that will be provided at run time.
 But currently these objects are undefined.
@@ -233,7 +233,7 @@ system = ena.System.dummy()
 node = ena.System.dummy()
 ```
 
-The two objects are now declared and initialised consistently with dummy data.
+The two objects are now declared and initialized consistently with dummy data.
 In general, every name that is expected to exist at runtime only and is used inside a `Template` method can be declared this way: `system`, `node`, `location`, `transition`, and `input`.
 
 Moreover, every name that is visible within the template file will be visible from the functions defined here.
@@ -287,12 +287,12 @@ A system is loaded from its three components:
 
 ### Aborts and jumps
 
-If a `Transition.action` raises exception `hyena.Abort`, it cannot be executed but the exception is silently discarded.
-This is how `Transition.action`, or any function that is called from it, signals that a transitions is not executable in the current context.
+If a `Transition.action` raises exception `hyena.Abort`, it cannot be executed, but the exception is silently discarded.
+This is how `Transition.action`, or any function that is called from it, signals that a transition is not executable in the current context.
 This is quite different from a guard that usually returns a Boolean, here an action has two outcomes:
 
  * return a value, in which case it can be executed, its updates are committed as a new state, and the returned value is recorded into the trace or the state graph
- * raise `Abort`, in which case the transition cannot be executed and its updates are rolled back
+ * raise `Abort`, in which case the transition cannot be executed, and its updates are rolled back
 
 `hyena` also provides a way to arbitrarily assign the current location of nodes during the execution of an action, regardless of the existing transitions.
 This is implemented as an exception `Jump` that can be raised from actions.
@@ -327,35 +327,35 @@ This template is similar to `examples/counter-tpl.py` except that, when `node.co
 `Jump` expects first the action to decorate the transition with (which replace the return value as there will be none), and a `dict` that associates to nodes identified by their index their new `.current`.
 So here this jumps is like returning `0` but at the same time we force the nodes `0` and `1` to both jump to their locations `0`.
 
-Note that this kind of actions allows to execute transitions that do not exist in the automata, which is the reason why we call them _jumps_ and implement them using an exception to emphasis that it breaks the standard execution rule.
+Note that this kind of actions allows executing transitions that do not exist in the automata, which is the reason why we call them _jumps_ and implement them using an exception to emphasize that it breaks the standard execution rule.
 Note also that, like in the example above, assignments performed during the action before raising `Jump` are committed to the state.
 Indeed, raising `Jump` is not an error but a way to specify that we want to break the automata semantics and perform direct jumps into new locations.
 
 ### Drawing models
 
 `hyena` allows to draw a model or a fully instantiated system.
-To do so, module `hena.draw` provides a command-line interface.
+To do so, module `hena` provides a command-line interface.
 For instance:
 
 ```shell
-sh> python -m hyena.draw hyena.ena.System
+sh> python -m hyena draw hyena.ena.System
 ```
-The above command asks `hyena.draw` to load class `System` in module `heyna.ena` and to draw it as a graph representing its fields and the classes they may contain.
+The above command asks `hyena` to load class `System` in module `heyna.ena` and to draw it as a graph representing its fields and the classes they may contain.
 This is how we obtained the first picture at the beginning of this README.
 Option `-o PATH` allows to save the picture to a specific path, otherwise a default path is constructed (here `hyena_ena_System.pdf`)
 
 ```shell
-sh> python -m hyena.draw hyena.ena.System examples/simple.py examples/simple.json
+sh> python -m hyena draw hyena.ena.System examples/simple.py examples/simple.json
 ```
 
-The above command asks `hyena.draw` to load a full system as defined in class `hyena.ena.System`, using the templates in `examples/simple.py` and the objects content defined in `examples/simple.json`.
-Here again, option `-o` allows to choose output file.
-Additionally, option `-g` allows to pass [GraphViz](https://www.graphviz.org) options to be inserted at graph level, and option `-c` allows to pass GraphViz options to be inserted at cluster level (ie, withing each node that contains an automaton).
-Finally, option `-a` orders `hyena.draw` to draw the automata inside each node, instead of juste their current location.
+The above command asks `hyena` to load a full system as defined in class `hyena.ena.System`, using the templates in `examples/simple.py` and the objects content defined in `examples/simple.json`.
+Here again, option `-o` allows choosing output file.
+Additionally, option `-g` allows passing [GraphViz](https://www.graphviz.org) options to be inserted at graph level, and option `-c` allows passing GraphViz options to be inserted at cluster level (ie, withing each node that contains an automaton).
+Finally, option `-a` orders `hyena` to draw the automata inside each node, instead of just their current location.
 For instance, the second picture above was generated using:
 
 ```shell
-sh> python -m hyena.draw -a -g "newrank=true; rankdir=LR" -c "rank=same" hyena.ena.System examples/simple.py examples/simple.json
+sh> python -m hyena draw -a -g "newrank=true; rankdir=LR" -c "rank=same" hyena.ena.System examples/simple.py examples/simple.json
 ```
 
 ### Simulation
@@ -398,7 +398,7 @@ Out[5]:
 Note that `system.succ()` returns a generator (thus the use of `list` to capture its items) of triples `(s, p, a)` where:
 
  * each `s` is a successor state
- * each `p` is the path to the transition that was executed to reach `s` (one can use `system[p]` to retrieved the corresponding `Transition` instance)
+ * each `p` is the path to the transition that was executed to reach `s` (one can use `system[p]` to retrieve the corresponding `Transition` instance)
  * each `a` is the value returned by the executed `Transition.action`
 
 `system.state` can also be assigned to move to another state from which others successor states can be computed:
@@ -438,7 +438,7 @@ Out[10]:
 Interactive simulation can be started with, eg:
 
 ```shell
-sh> python -m hyena.simul -j examples/simple.json -p examples/simple.py
+sh> python -m hyena simul -j examples/simple.json -p examples/simple.py
 ```
 
 This yields a shell that prompts for commands to explore a trace.
@@ -453,15 +453,15 @@ In such a case, `hyena` allows to compute all these reachable states and to chec
 However, if the set of reachable states is not finite, this computation will run until it crashes saturating the memory.
 In such situations, an option is available to bound exploration to a finite number of states.
 
-Reachability analyser can be started with, eg:
+Reachability analyzer can be started with, eg:
 
 ```shell
-sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py
+sh> python -m hyena reach -j examples/simple.json -p examples/simple.py
 ```
 
 Invoked this way, it will just explore the state-space until all reachable states are computed.
-Like for `hyena.simul`, option `-c` allows to load the system from a class other that `hyena.ena.System`.
-Other options allow to control exploration:
+Like for `hyena simul`, option `-c` allows to load the system from a class other that `hyena.ena.System`.
+Other options allow controlling exploration:
 
  * `-v` toggles printing each explored state
  * `-l NUM` limits the state-space exploration to `NUM` states
@@ -474,7 +474,7 @@ Using `-a` several times allow to check several properties.
 For instance, one could run:
 
 ```shell
-sh> python -m hyena.reach -j examples/simple.json -p examples/simple.py -t -a 'system.nodes[0].current == 0'
+sh> python -m hyena reach -j examples/simple.json -p examples/simple.py -t -a 'system.nodes[0].current == 0'
 assert failed 'system.nodes[0].current == 0'
 #0 system[nodes=(node[current=0], node[current=0])]
 >> system.nodes[0].locations[0].transitions[0] => 0
@@ -520,7 +520,7 @@ However, it is also possible to extend existing classes (or even to create compl
 For instance, consider we want to add a counter to nodes in order to record how many transitions each node fired.
 Then, we would like that the cost of a transition is either `0` as before, or is the value of this counter.
 This cannot be made by just adding a class field as above because `hyena` would not consider it as part of the state.
-To achieved this correctly, we must declare a new mutable field in class `None`, as in `examples/counter.py`:
+To achieve this correctly, we must declare a new mutable field in class `None`, as in `examples/counter.py`:
 
 ```python
 from hyena import ena, Annotated, F
@@ -535,11 +535,11 @@ class System(ena.System):
     pass
 ```
 
-In this module, we import from `hyena` the sub-module `ena` that we want to extend
+In this module, we import from `hyena` the submodule `ena` that we want to extend
 Then we import everything from `hyena.ena` in order to make visible its classes.
 Next, we extend class `Node` by adding a field `count` that is an `int` (doing so, we hide the previous value of `Node` that was imported from `hyena.ena`).
 This field is declared mutable, see below for details, otherwise it would be a constant field.
-Finally, we extend class `System` but we add noting to it.
+Finally, we extend class `System`, but we add noting to it.
 This step is required because later we will load systems from `examples.counter.System` and doing so, the library will query its module.
 If we don't redefine `System`, the library would retrieve the value imported from `hyena.ena` which is not the extended version we want to use.
 By redefining `System` this way, we ensure that the library is aware that the right module to work with is `examples.counter`.
@@ -579,18 +579,18 @@ This template defines the default values for:
 #### `Struct` and fields
 
 Every class defined in an extension module like above should be either a subclass of one from basic HyENAs, or a subclass of `hyena.Struct` (that itself is the parent class of HyENAs classes).
-`hyena` also provides `hyena.StrEnum` that is a recognised extension of standard `enum.StrEnum` (in particular, it is drawn in class diagrams).
+`hyena` also provides `hyena.StrEnum` that is a recognized extension of standard `enum.StrEnum` (in particular, it is drawn in class diagrams).
 Any other class or object defined in an extension module may not work as expected as `hyena` will not consider it when constructing the scopes of methods.
 On the other hand, anything declared within a Python template will be visible at run time.
 
-The fields of a `Struct` subclass should be all declared _without_ a default value (this is templates' job do do this) and with a type hint that `hyena` understands, that is either a basic Python type hint `hint`, `Annotated[hint, ...]` to add further information needed by `hyena`.
+The fields of a `Struct` subclass should be all declared _without_ a default value (this is templates' job to do this) and with a type hint that `hyena` understands, that is either a basic Python type hint `hint`, `Annotated[hint, ...]` to add further information needed by `hyena`.
 Basic hints include:
 
  * `hint` can basically be one of `bool`, `int`, a subclass of `Struct`, or an instance of `StrEnum`
  * `Callable` is the type hint for a method or auxiliary function, for instance this is the type of `Transition.action`
- * `Callable[[], type]` is a more detailed type hint that specifies the return type, this information is not used but it is displayed in the class diagram as `(type)`
+ * `Callable[[], type]` is a more detailed type hint that specifies the return type, this information is not used, but it is displayed in the class diagram as `(type)`
  * `list[base]` is an array storing instances of type `base`
- * `Optional[base]` is an optional field, if is is not given in the JSON file nor in the template, its value is initialised to `None`
+ * `Optional[base]` is an optional field, if it is not given in the JSON file nor in the template, its value is initialized to `None`
 
 Further information may be passed to `hyena` using `Annotated` type hints, and a helper class `hyena.F`:
 
@@ -602,7 +602,7 @@ Further information may be passed to `hyena` using `Annotated` type hints, and a
    - or as the index in another array (eg, `#.name` or `#Class.name`) which means that both arrays have the same size
  * `Annotated[hint, F.MUTABLE()]` defines a mutable field, if `F.MUTABLE()` is not used then the field is non-mutable
  * `Annotated[hint, F.UNIQUE(scope)]` is a field whose value is expected to be unique in the given `scope`, the latter being the name of a `Struct` subclass. For instance:
-   - defining a field `Node.name: Annotated[str, F.UNIQUE("System")]` states that every `Node` instance should have a value in its field `.name` that is distinct from that in every other nodes
+   - defining a field `Node.name: Annotated[str, F.UNIQUE("System")]` states that every `Node` instance should have a value in its field `.name` that is distinct from that in every other node
    - defining a field `Location.name: Annotated[str, F.UNIQUE("Node")]` is similar but distinct nodes may have locations with the same `.name` as the scope is here limited to `Node`
  * `Annotated[base, F.MACRO(expr)]` defines a constant field whose value has type `base` and will be computed from `expr` when the `System` is instantiated (ie, at the initial state), for instance, considering we have added `Node.name` as above, we could add `Input.name: Annotated[str, F.MACRO("system.nodes[input.node].name)"]` thus the name of an input is the name of the node it corresponds to
 

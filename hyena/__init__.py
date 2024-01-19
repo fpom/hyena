@@ -10,6 +10,7 @@ from enum import StrEnum as _StrEnum
 from inspect import getmembers, getmodule, getsource, isclass, isfunction
 from collections.abc import Callable
 from typing import Annotated, Optional, Union, Any, Self, get_args, get_origin
+from pathlib import Path
 
 from frozendict import frozendict
 
@@ -382,13 +383,15 @@ class Struct:
     @classmethod
     def from_json(cls, source, pydefs=None) -> Self:
         "load structure from JSON"
-        try:
+        if isinstance(source, Path):
+            data = json.load(source.open())
+        elif isinstance(source, str):
             try:
-                data = json.load(source)
-            except Exception:
                 data = json.load(open(source))
-        except Exception:
-            data = json.loads(source)
+            except Exception:
+                data = json.loads(source)
+        else:
+            data = json.load(source)
         if not isinstance(data, dict):
             raise ValueError(f"cannot load from {data}")
         return cls.from_dict(data, pydefs)
@@ -396,7 +399,7 @@ class Struct:
     @classmethod
     def from_dict(cls, data: dict[str, Any], pydefs=None) -> Self:
         "load structure from dict"
-        if isinstance(pydefs, str):
+        if isinstance(pydefs, (str, Path)):
             spec = imputil.spec_from_file_location("___pydefs", pydefs)
             if spec is None or spec.loader is None:
                 raise ValueError(f"could not load {pydefs} as a Python module")

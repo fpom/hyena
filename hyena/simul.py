@@ -299,27 +299,3 @@ class Simulator:
         print(f"{S.DIM}{F.RED}<<< {len(self.trace) - 1} events{S.RESET_ALL}")
         self.trace = [Event(self.ini, None, 0)]
         self._long_prompt()
-
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--class", dest="cls", type=str, metavar="CLASS",
-                        default="hyena.ena.System",
-                        help=("System class to be loaded"
-                              " (default: `hyena.ena.System`)"))
-    parser.add_argument("-j", "--json", type=str, metavar="PATH",
-                        help="JSON file to be loaded")
-    parser.add_argument("-p", "--python", type=str, metavar="PATH",
-                        help="Python template to be loaded")
-    args = parser.parse_args()
-    modname, classname = args.cls.rsplit(".", 1)
-    try:
-        ena = importlib.import_module(modname)
-        cls = getattr(ena, classname)
-    except Exception as err:
-        parser.exit(2, (f"could not import '{modname}.{classname}'"
-                        f" ({err.__class__.__name__}: {err})\n"))
-    system = cls.from_json(args.json, args.python)
-    simul = Simulator(system)
-    simul.run()
