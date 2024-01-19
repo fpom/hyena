@@ -116,7 +116,7 @@ class F(dict):
 
     @classmethod
     def MACRO(cls, expr):
-        return cls(macro=expr, const=True)
+        return cls(macro=expr, func=True, const=True)
 
     @classmethod
     def UNIQUE(cls, scope):
@@ -158,6 +158,10 @@ class Field:
 
     def __getattr__(self, name):
         return self.annot[name]
+
+    def __repr__(self):
+        fields = (f'{k}: {v!r}' for k, v in self.annot.items())
+        return f"Field[{', '.join(fields)}]"
 
     def __str__(self):
         if self.array:
@@ -362,8 +366,12 @@ class Struct:
                 obj = None
             elif isclass(ftype.base) and issubclass(ftype.base, Struct):
                 obj = ftype.base.dummy()
+            elif isclass(ftype.base) and issubclass(ftype.base, StrEnum):
+                obj = ftype.base(next(iter(ftype.base)))
             elif ftype.func:
-                obj = Method(name, None, ftype.base)
+                def _dummy(*largs, **kargs):
+                    pass
+                obj = Method(name, _dummy, ftype.base)
             else:
                 obj = ftype.base()
             if not ftype.option and ftype.array:
