@@ -3,11 +3,14 @@ import json
 import logging
 import types
 import re
+import ast
+import inspect
+import linecache
 
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import StrEnum as _StrEnum
-from inspect import getmembers, getmodule, getsource, isclass, isfunction
+from inspect import getmembers, getmodule, isclass, isfunction
 from collections.abc import Callable
 from typing import Annotated, Optional, Union, Any, Self, get_args, get_origin
 from pathlib import Path
@@ -35,6 +38,28 @@ log = make_logger("hyena")
 #
 # auxiliary stuff
 #
+
+
+def getsource(obj):
+    if isinstance(obj, Method):
+        return inspect.getsource(obj.func)
+    else:
+        return inspect.getsource(obj)
+
+
+def getsourcelines(obj):
+    if isinstance(obj, Method):
+        return inspect.getsourcelines(obj.func)
+    else:
+        return inspect.getsourcelines(obj)
+
+
+def getsourcefile(obj):
+    if isinstance(obj, Method):
+        return inspect.getsourcefile(obj.func)
+    else:
+        return inspect.getsourcefile(obj)
+
 
 
 class array(list):
@@ -301,18 +326,38 @@ class Method:
     def has_jump(self):
         return re.search(r"raise\s+Jump", getsource(self.func)) is not None
 
+    @classmethod
+    def compyle(cls, source, name=None):
+        if not hasattr(cls, "__src__"):
+            cls.__src__ = {}
+            old_getlines = linecache.getlines
+
+            def new_getlines(filename, module_globals=None):
+                if filename in cls.__src__:
+                    return cls.__src__[filename].splitlines(True)
+                else:
+                    return old_getlines(filename, module_globals)
+
+            linecache.getlines = new_getlines
+        filename = f"<exec #{len(cls.__src__)}>"
+        cls.__src__[filename] = source
+        env = {}
+        exec(compile(ast.parse(source), filename=filename, mode="exec"), {}, env)
+        if name is None:
+            env.pop("__builtins__", None)
+            return env
+        else:
+            return env[name]
+
     def _load_func(self, name, data, ret):
         if isinstance(data, str) or (ret and isinstance(data, ret)):
-            data = repr(data)
             if ret is type(None):
                 src = (f"def {name}(self):\n"
                        f"    {data or 'pass'}\n")
             else:
                 src = (f"def {name}(self):\n"
-                       f"    return {ret.__name__}({data})\n")
-            env = {}
-            exec(src, env)
-            return env[name]
+                       f"    return {ret.__name__}({data!r})\n")
+            return self.compyle(src, name)
         elif isfunction(data):
             return data
         else:

@@ -1,5 +1,5 @@
 from hyena import Template
-from . import counter as xena
+from examples import counter as xena
 
 # to silent typecheckers
 system = xena.System.dummy()
