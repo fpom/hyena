@@ -14,6 +14,7 @@ from inspect import getmembers, getmodule, isclass, isfunction
 from collections.abc import Callable
 from typing import Annotated, Optional, Union, Any, Self, get_args, get_origin
 from pathlib import Path
+from functools import cache
 
 from frozendict import frozendict
 
@@ -386,6 +387,7 @@ class Struct:
     def __post_init__(self):
         self.__dict__["__extra__"] = {}
         self.__dict__["__fields__"] = {n: t for n, t in self._fields()}
+        self.__dict__["_state"] = None
 
     def __getattr__(self, name):
         try:
@@ -523,7 +525,7 @@ class Struct:
                 env.update((k, v) for k, v in getmembers(self.__pydefs__)
                            if not k.startswith("_"))
         env |= {self.__class__.__name__.lower(): self}
-        for fname, ftype in self._fields():
+        for fname, ftype in self.__fields__.items():
             value = getattr(self, fname)
             if issubclass(ftype.base, Struct):
                 if isinstance(value, tuple):
@@ -552,26 +554,31 @@ class Struct:
 
     @property
     def state(self):
+        if self._state is not None:
+            return self._state
         state = {}
-        for name, ftype in self._fields():
+        for name, ftype in self.__fields__.items():
             value = getattr(self, name)
             if (isinstance(value, Struct) and (st := value.state) is not None):
                 state[name] = st
             elif isinstance(value, tuple):
                 if value and isinstance(value[0], Struct):
                     st = tuple(v.state for v in value)
-                    if any(s for s in st):
+                    if any(s is not None for s in st):
                         state[name] = st
             elif isinstance(value, list):
                 state[name] = tuple(value)
             elif value is not None and not ftype.const:
                 state[name] = value
-        return State(self, state) or None
+        if state:
+            s = self.__dict__["_state"] = State(self, state)
+            return s
 
     @state.setter
     def state(self, new):
         if (me := self.__class__.__name__.lower()) != new.struct:
             raise ValueError(f"cannot assign {new} to {me}.state")
+        self.__dict__["_state"] = None
         for key, val in new.items():
             if isinstance(val, State):
                 getattr(self, key).state = val
