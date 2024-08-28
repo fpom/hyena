@@ -5,3 +5,7 @@ doc/%.pdf:
 	pdfcrop $*.pdf $@
 	rm -r $*.pdf
 	pdftoppm $@ $(@D)/$* -png -f 1 -singlefile
+
+update:
+	git pull
+	pip install . --force --no-deps
